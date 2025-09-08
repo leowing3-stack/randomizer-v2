@@ -1,0 +1,487 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+<title>SocialBurst – Deal a Plan</title>
+
+<style>
+  /* === FONTS (unchanged) === */
+  @font-face {
+    font-family: "BrotherBold";
+    src: url("./SocialBurstRandomizer/fonts/BROTHER-Bold.ttf") format("truetype");
+  }
+  @font-face {
+    font-family: "Lexend";
+    src: url("./SocialBurstRandomizer/fonts/Lexend-VariableFont_wght.ttf") format("truetype");
+  }
+  @font-face {
+    font-family: "MadeTommyBold";
+    src: url("./SocialBurstRandomizer/fonts/MADE TOMMY Bold_PERSONAL USE.otf") format("opentype");
+  }
+
+  :root{
+    --purple:#8338EC;
+    --yellow:#FFEC1F;
+    --white:#ffffff;
+    --black:#000000;
+  }
+
+  /* === BASE (unchanged look) === */
+  body{
+    margin:0;
+    min-height:100dvh;
+    background: var(--purple);
+    color:var(--white);
+    font-family: Lexend, sans-serif;
+    overflow:hidden;
+  }
+
+  .brand-badge{
+    position:fixed; inset:18px auto auto 18px; z-index:30;
+    display:flex; align-items:center; gap:12px;
+  }
+  .brand-badge img{ width:72px; height:72px; }
+  .brand-badge .brand-name{
+    font-family: BrotherBold, sans-serif;
+    font-size:36px;
+    color:var(--yellow);
+  }
+
+  .stage{
+    position:relative;
+    height:100dvh;
+    display:flex; align-items:center; justify-content:center;
+    perspective: 1400px;
+  }
+
+  /* GROUP WRAPPER: centers the triangle of envelopes */
+  .stack{
+    position:relative;
+    width:min(92vw, 960px);
+    display:grid;
+    place-items:center;
+  }
+
+  /* Triangle layout (top-left, top-right, bottom-center) with spacing */
+  .env-grid{
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto;
+    gap: clamp(18px, 3.2vw, 28px);
+    align-items:center;
+    justify-items:center;
+  }
+  .card-top-left { grid-column: 1; grid-row: 1; justify-self:end; }
+  .card-top-right{ grid-column: 2; grid-row: 1; justify-self:start; }
+  .card-bottom   { grid-column: 1 / span 2; grid-row: 2; justify-self:center; }
+
+  /* Individual envelope card wrapper (scoped state flags live here) */
+  .env-card{
+    position:relative;
+    width:min(42vw, 420px);
+    height: clamp(120px, 22vw, 160px);
+  }
+
+  /* Keep the original 3D transform/flip behaviour but SCOPE to each card */
+  .envelope{
+    position:absolute; inset:0;
+    display:grid; place-items:center;
+    transform-style:preserve-3d;
+    transition: transform 0.8s ease;
+    z-index:10;
+  }
+  .env-card.is-back .envelope{ transform: rotateY(180deg); }
+
+  .env-face{
+    position:absolute; inset:0;
+    border-radius:10px;
+    background:var(--white);
+    border:1px solid var(--black);
+    display:grid; place-items:center;
+    backface-visibility:hidden;
+    padding-inline: clamp(10px, 2vw, 16px);
+  }
+  .env-front{ transform: rotateY(0deg); }
+  .env-front .top-secret{
+    color:var(--purple); font-weight:800;
+    font-size: clamp(18px, 3.8vw, 26px);
+    margin-bottom: clamp(6px, 1.2vw, 8px);
+  }
+  .env-front .env-label{
+    font-family: BrotherBold, sans-serif;
+    color:var(--purple);
+    font-size: clamp(20px, 4.6vw, 32px);
+    letter-spacing:0.5px;
+  }
+  .env-front .front-stack{
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap: clamp(6px, 1.4vw, 10px);
+  }
+
+  .env-back{ transform: rotateY(180deg); }
+
+  .flap{
+    position:absolute; left:0; right:0; top:0;
+    height:52%;
+    transform-origin: top center;
+    transform: rotateX(0deg);
+    transition: transform 1s ease 0.25s;
+    pointer-events:none;
+  }
+  .flap-shape{
+    margin:0 auto; width:85%; height:100%;
+    background:var(--white);
+    border:2px solid var(--black);
+    clip-path: polygon(0 0, 100% 0, 50% 100%);
+  }
+  .logo-over-flap{
+    position:absolute; top:48%; left:50%;
+    transform: translateX(-50%);
+    width: clamp(52px, 9vw, 90px); height:auto;
+  }
+  .env-card.is-open .flap{ transform: rotateX(-180deg); }
+
+  /* back seams */
+  .back-seams{ position:absolute; inset:0; pointer-events:none; }
+  .seam{
+    position:absolute; background:var(--black);
+    width:2px;
+    transform-origin: bottom center;
+  }
+  .seam-bottom-left{  left:12px;  bottom:10px; height:66%; transform: rotate(35deg);  }
+  .seam-bottom-right{ right:12px; bottom:10px; height:66%; transform: rotate(-35deg); }
+  .seam-top-left{  left:12px;  top:10px; height:66%; transform-origin: top center; transform: rotate(-35deg); }
+  .seam-top-right{ right:12px; top:10px; height:66%; transform-origin: top center; transform: rotate(35deg); }
+
+  /* Letter per card (so only the clicked card reveals its own letter) */
+  .letter-wrap{
+    position:absolute; inset:0;
+    display:flex; align-items:center; justify-content:center;
+    z-index:20; pointer-events:none;
+  }
+  .letter{
+    width:min(68vw, 520px); max-height:72vh;
+    aspect-ratio:4/5;
+    background:var(--white);
+    border:1px solid var(--black);
+    border-radius:8px;
+    box-shadow:0 12px 30px rgba(0,0,0,0.25);
+    transform-origin: bottom center;
+    transform: translateY(25%) scaleY(0.5);
+    opacity:0;
+    transition: transform 0.8s ease, opacity 0.6s ease;
+    display:flex; flex-direction:column; justify-content:center;
+    padding: clamp(18px, 3.5vw, 28px);
+    gap: clamp(12px, 2vw, 20px);
+    text-align:center;
+  }
+  .env-card.is-open .letter{ transform: translateY(-2%) scaleY(1); opacity:1; pointer-events:auto; }
+
+  .letter h5{ margin:0; color:var(--purple); font-weight:800; font-size:clamp(16px,3.2vw,20px); }
+  .letter .title{ margin:0; color:var(--purple); font-weight:800; font-size:clamp(22px,5.2vw,34px); }
+  .letter .venue{ margin:0; color:var(--purple); font-weight:800; font-size:clamp(16px,3.8vw,20px); opacity:0.95; }
+  .letter .more{ margin-top:10px; }
+  .letter .more a{ color:var(--yellow); text-decoration:underline; font-weight:800; }
+
+  /* Clickable overlay per card */
+  .click-overlay{ position:absolute; inset:0; cursor:pointer; z-index:19; background:transparent; }
+
+  /* Reset button same look */
+  .reset-wrap{ position:fixed; left:0; right:0; bottom:22px;
+    display:flex; justify-content:center; z-index:25;
+    opacity:0; transform:translateY(10px);
+    transition: opacity 0.25s ease, transform 0.25s ease;
+    pointer-events:none;
+  }
+  .show-reset .reset-wrap{ opacity:1; transform:translateY(0); pointer-events:auto; }
+  .reset-btn{ width:64px; height:64px; background:var(--yellow);
+    border-radius:999px; border:none; cursor:pointer;
+    box-shadow:0 8px 22px rgba(0,0,0,0.25);
+  }
+</style>
+</head>
+<body>
+
+<!-- BRAND -->
+<div class="brand-badge">
+  <img src="./SocialBurstRandomizer/img/logo.png" alt="logo"/>
+  <div class="brand-name">SocialBurst</div>
+</div>
+
+<main class="stage">
+  <section class="stack">
+    <div class="env-grid">
+      <!-- DEALS (top-left) -->
+      <section id="envDeals" class="env-card card-top-left" aria-label="Open Deals">
+        <div class="click-overlay"></div>
+        <div class="envelope">
+          <div class="env-face env-front">
+            <div class="front-stack">
+              <div class="top-secret">TOP SECRET</div>
+              <div class="env-label">DEALS</div>
+            </div>
+          </div>
+          <div class="env-face env-back">
+            <div class="back-seams">
+              <span class="seam seam-bottom-left"></span>
+              <span class="seam seam-bottom-right"></span>
+              <span class="seam seam-top-left"></span>
+              <span class="seam seam-top-right"></span>
+            </div>
+            <img class="logo-over-flap" src="./SocialBurstRandomizer/img/logo.png" alt="">
+            <div class="flap"><div class="flap-shape"></div></div>
+          </div>
+        </div>
+        <div class="letter-wrap">
+          <article class="letter">
+            <h5>You Are Invited To….</h5>
+            <div class="title">Loading…</div>
+            <div class="venue"></div>
+            <div class="more"><a class="link" href="#" target="_blank">Open details</a></div>
+          </article>
+        </div>
+      </section>
+
+      <!-- MUSIC (top-right) -->
+      <section id="envMusic" class="env-card card-top-right" aria-label="Open Music">
+        <div class="click-overlay"></div>
+        <div class="envelope">
+          <div class="env-face env-front">
+            <div class="front-stack">
+              <div class="top-secret">TOP SECRET</div>
+              <div class="env-label">MUSIC</div>
+            </div>
+          </div>
+          <div class="env-face env-back">
+            <div class="back-seams">
+              <span class="seam seam-bottom-left"></span>
+              <span class="seam seam-bottom-right"></span>
+              <span class="seam seam-top-left"></span>
+              <span class="seam seam-top-right"></span>
+            </div>
+            <img class="logo-over-flap" src="./SocialBurstRandomizer/img/logo.png" alt="">
+            <div class="flap"><div class="flap-shape"></div></div>
+          </div>
+        </div>
+        <div class="letter-wrap">
+          <article class="letter">
+            <h5>You Are Invited To….</h5>
+            <div class="title">Loading…</div>
+            <div class="venue"></div>
+            <div class="more"><a class="link" href="#" target="_blank">Open details</a></div>
+          </article>
+        </div>
+      </section>
+
+      <!-- EVENTS (bottom-center) -->
+      <section id="envEvents" class="env-card card-bottom" aria-label="Open Events">
+        <div class="click-overlay"></div>
+        <div class="envelope">
+          <div class="env-face env-front">
+            <div class="front-stack">
+              <div class="top-secret">TOP SECRET</div>
+              <div class="env-label">EVENTS</div>
+            </div>
+          </div>
+          <div class="env-face env-back">
+            <div class="back-seams">
+              <span class="seam seam-bottom-left"></span>
+              <span class="seam seam-bottom-right"></span>
+              <span class="seam seam-top-left"></span>
+              <span class="seam seam-top-right"></span>
+            </div>
+            <img class="logo-over-flap" src="./SocialBurstRandomizer/img/logo.png" alt="">
+            <div class="flap"><div class="flap-shape"></div></div>
+          </div>
+        </div>
+        <div class="letter-wrap">
+          <article class="letter">
+            <h5>You Are Invited To….</h5>
+            <div class="title">Loading…</div>
+            <div class="venue"></div>
+            <div class="more"><a class="link" href="#" target="_blank">Open details</a></div>
+          </article>
+        </div>
+      </section>
+    </div>
+  </section>
+</main>
+
+<div class="reset-wrap"><button id="resetBtn" class="reset-btn" aria-label="Reset"></button></div>
+
+<audio id="openSfx" preload="auto">
+  <source src="./SocialBurstRandomizer/sfx/letter-open.mp3" type="audio/mpeg"/>
+</audio>
+
+<script>
+/* === CONFIG === */
+const CSV_URL="https://docs.google.com/spreadsheets/d/e/2PACX-1vQi9O78dGEZQ38WWiuMBKKNJwlp6J-yLmPP2lCjJJAHifG1YnpIPVvGt9tKdULSC4ZW9CBiIQOTOx7L/pub?gid=1474444500&single=true&output=csv";
+
+/* === ELEMENTS === */
+const openSfx=document.getElementById('openSfx');
+const resetBtn=document.getElementById('resetBtn');
+
+const envDeals = document.getElementById('envDeals');
+const envMusic = document.getElementById('envMusic');
+const envEvents= document.getElementById('envEvents');
+
+let allEvents=[], loaded=false, isAnimating=false;
+
+/* === CSV PARSING (kept minimal & compatible) === */
+function parseCSV(text){
+  const rows=text.split(/\r?\n/).filter(l=>l.trim().length);
+  const header=rows.shift().split(',').map(h=>h.trim());
+  const idx={
+    title: header.indexOf('title'),
+    venue: header.indexOf('venue_name'),
+    url:   header.indexOf('source_url'),
+    start: header.indexOf('start_datetime'),
+    end:   header.indexOf('end_datetime'),
+    cat:   header.indexOf('category')
+  };
+  return rows.map(line=>{
+    const parts=line.split(",");
+    return {
+      title: parts[idx.title]||'',
+      venue: parts[idx.venue]||'',
+      url:   parts[idx.url]||'#',
+      start_datetime: parts[idx.start]||'',
+      end_datetime:   parts[idx.end]||'',
+      category: (idx.cat>=0 ? (parts[idx.cat]||'') : '')
+    };
+  });
+}
+
+/* parse “10:00 am  8/9” or “00:00  14/9” to Date (this year, local) */
+function parseDMYTime(str){
+  const s=(str||'').toLowerCase().replace(/\u00a0|\u202f/g,' ').trim();
+  if(!s) return null;
+  const m=s.match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm|a\.m\.|p\.m\.)?\s+(\d{1,2})\/(\d{1,2})$/i);
+  if(!m) return null;
+  let hh=parseInt(m[1],10);
+  const mm=m[2]?parseInt(m[2],10):0;
+  const ap=(m[3]||'').replace(/\./g,'').toLowerCase();
+  const d=parseInt(m[4],10), mo=parseInt(m[5],10);
+  const year=(new Date()).getFullYear();
+  if(ap==='pm' && hh<12) hh+=12;
+  if(ap==='am' && hh===12) hh=0;
+  const dt=new Date(year, mo-1, d, hh, mm, 0, 0);
+  return isNaN(dt)?null:dt;
+}
+function isActiveToday(ev, now){
+  const s=parseDMYTime(ev.start_datetime);
+  let   e=parseDMYTime(ev.end_datetime);
+  if(!s && !e) return false;
+
+  const sameDay = (a,b)=>a && b && a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate();
+  const isStartToday = s && sameDay(s, now);
+  const isEndToday   = e && sameDay(e, now);
+  if(!isStartToday && !isEndToday) return false;
+
+  if(s && !e) e = new Date(s.getTime()+2*60*60*1000);
+  const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23,59,59,999);
+  const effectiveEnd = (isEndToday && e) ? e : endOfToday;
+  return effectiveEnd > now;
+}
+
+/* LOAD + cache */
+async function ensureLoaded(){
+  if(loaded) return;
+  const res=await fetch(CSV_URL);
+  const txt=await res.text();
+  allEvents=parseCSV(txt);
+  loaded=true;
+}
+
+/* Helpers */
+function closeAll(){
+  document.body.classList.remove('show-reset');
+  [envDeals, envMusic, envEvents].forEach(w=>{
+    w.classList.remove('is-open','is-back');
+  });
+}
+
+function pickRandom(arr){
+  if(!arr || !arr.length) return null;
+  return arr[Math.floor(Math.random()*arr.length)];
+}
+
+function fillLetter(wrapper, ev){
+  const titleEl = wrapper.querySelector('.letter .title');
+  const venueEl = wrapper.querySelector('.letter .venue');
+  const linkEl  = wrapper.querySelector('.letter .more .link');
+
+  if(!ev){
+    titleEl.textContent = 'No matching items today';
+    venueEl.textContent = '';
+    linkEl.href = '#';
+    return;
+  }
+  titleEl.textContent = ev.title || 'Untitled';
+  venueEl.textContent = ev.venue || '';
+  linkEl.href = ev.url || '#';
+}
+
+/* Category filter (case-insensitive exact match) */
+function filterByCategories(events, cats){
+  const set = cats.map(c=>c.trim().toLowerCase());
+  const now = new Date();
+  return events.filter(ev=>{
+    const cat=(ev.category||'').trim().toLowerCase();
+    return isActiveToday(ev, now) && set.includes(cat);
+  });
+}
+
+/* OPEN SEQUENCE per card */
+async function openCard(wrapper, cats){
+  if(isAnimating) return; isAnimating=true;
+
+  try{ await ensureLoaded(); }catch(e){ /* ignore */ }
+
+  // Close others
+  closeAll();
+
+  // Filter and pick
+  const filtered = filterByCategories(allEvents, cats);
+  const chosen = pickRandom(filtered);
+  if(!chosen && (!allEvents || !allEvents.length)){
+    // No rows at all / fetch failed – show generic fallback
+    fillLetter(wrapper, null);
+  }else if(!chosen){
+    fillLetter(wrapper, null);
+  }else{
+    fillLetter(wrapper, chosen);
+  }
+
+  // Animate
+  wrapper.classList.add('is-back');
+  setTimeout(()=>{ try{ openSfx.currentTime=0; openSfx.play().catch(()=>{});}catch(e){}; },260);
+  setTimeout(()=>{
+    wrapper.classList.add('is-open');
+    document.body.classList.add('show-reset');
+    setTimeout(()=>{ isAnimating=false; }, 900);
+  }, 700);
+}
+
+/* WIRE UP */
+envDeals.querySelector('.click-overlay').addEventListener('click', ()=>openCard(envDeals, ['deal']));
+envMusic.querySelector('.click-overlay').addEventListener('click', ()=>openCard(envMusic, ['live_music']));
+envEvents.querySelector('.click-overlay').addEventListener('click', ()=>openCard(envEvents, ['community','pub_quiz']));
+
+/* Click letter also (quality of life) */
+[envDeals, envMusic, envEvents].forEach(w=>{
+  w.querySelector('.letter').addEventListener('click', ()=>{
+    if(!w.classList.contains('is-open')) openCard(w, []);
+  });
+});
+
+/* Reset */
+resetBtn.addEventListener('click', ()=>{
+  if(isAnimating) return;
+  closeAll();
+});
+</script>
+</body>
+</html>
+
