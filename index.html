@@ -2,17 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
-<title>SocialBurst — 8-Bit Explorer</title>
+<title>SocialBurst — Game Boy Explorer</title>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 
-<!-- =========================================================
-     SOCIALBURST 8-BIT EXPLORER (vanilla HTML/CSS/JS)
-     - Replace CSV_URL with your “Today” tab publish-to-web CSV
-     - Uses assets from ./SocialBurstRandomizer/ (fonts, logo)
-     - Drop this file into GitHub Pages and go
-     ========================================================= -->
-
-<!-- Fonts from your project (paths must remain intact) -->
+<!-- Fonts from your project (paths unchanged) -->
 <style>
   @font-face {
     font-family: "BrotherBold";
@@ -36,191 +29,170 @@
     --white:#ffffff;
     --black:#000000;
 
+    --shell:#6a2ee0;           /* Game Boy shell (SocialBurst purple variant) */
+    --shell-dark:#4f22a8;
+    --shell-light:#8d5bf0;
+    --screen:#9bbc0f;          /* old-school GB green */
+    --screen-dark:#306230;
+    --screen-edge:#567d2c;
     --ink:#0f0f12;
     --ink-2:#3a3a44;
 
-    --sky:#c7e6ff;
-    --ground:#1b132b;      /* deep purple ground */
-    --grass:#2b1b4b;       /* darker stripe for depth */
-    --pixel: 4px;          /* base “pixel” size for blocky look */
-    --radius: 12px;
-    --shadow: 0 10px 24px rgba(0,0,0,.18);
+    --radius:22px;
+    --shadow:0 18px 40px rgba(0,0,0,.28);
   }
 
   * { box-sizing: border-box; }
   html, body { height:100%; }
   body{
     margin:0;
+    background: radial-gradient(1200px 600px at 50% -20%, #eee, #d8d8ff 60%, #c7c7ff 100%);
+    color:var(--ink);
     font-family: Lexend, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial;
-    color: var(--ink);
-    background: linear-gradient(#dff1ff, var(--sky) 55%, var(--ground) 55%, var(--grass) 56%) no-repeat fixed;
-    image-rendering: pixelated; /* crispy edges on scaled blocks */
-    -webkit-font-smoothing: antialiased;
     overflow:hidden;
   }
 
+  /* Top brand bar (subtle) */
   header.topbar{
-    position: fixed; top:0; left:0; right:0; z-index:50;
-    display:flex; align-items:center; gap:12px;
-    padding:10px 14px;
-    background: rgba(255,255,255,0.7);
-    backdrop-filter: blur(6px);
-    border-bottom:1px solid rgba(0,0,0,.08);
+    position:fixed; top:8px; left:8px; right:8px; z-index:50;
+    display:flex; align-items:center; gap:10px;
+    background:rgba(255,255,255,0.7); backdrop-filter:blur(6px);
+    border:1px solid rgba(0,0,0,.08); border-radius:12px; padding:6px 10px;
   }
-  .brand{ display:flex; align-items:center; gap:10px; }
-  .brand img{ width:40px; height:40px; object-fit:contain; }
-  .brand .name{ font-family: BrotherBold, sans-serif; color:var(--purple); font-size:20px; letter-spacing:.3px; }
+  .brand{ display:flex; align-items:center; gap:8px; }
+  .brand img{ width:32px; height:32px; }
+  .brand .name{ font-family: BrotherBold, sans-serif; color:var(--purple); font-size:18px; }
   .spacer{ flex:1; }
-
-  .pill-group{
-    display:inline-flex; border:2px solid var(--purple); border-radius:999px; overflow:hidden; background:transparent;
-  }
-  .pill{
-    padding:6px 12px; border:none; background:transparent; color:var(--purple);
-    font-family: BrotherBold, sans-serif; cursor:pointer; letter-spacing:.2px; font-size:14px;
-  }
-  .pill[aria-pressed="true"]{ background:var(--purple); color:var(--white); }
-
   .saved-btn{
-    display:inline-flex; align-items:center; gap:8px;
-    padding:6px 10px; background:transparent; color:var(--purple);
-    border:2px solid var(--purple); border-radius:999px; font-family: BrotherBold, sans-serif; cursor:pointer; font-size:14px;
+    display:inline-flex; align-items:center; gap:8px; border:2px solid var(--purple);
+    border-radius:999px; padding:6px 10px; background:transparent; color:var(--purple); font-weight:800; cursor:pointer;
   }
   .badge{
     min-width:20px; height:20px; padding:0 6px; border-radius:999px; background:var(--yellow); color:var(--black);
     display:inline-flex; align-items:center; justify-content:center; font-size:12px; font-weight:800;
   }
 
-  /* WORLD VIEWPORT */
-  .viewport{
-    position: fixed; inset:60px 0 84px 0; /* leave room for header & controls */
+  /* GAME BOY SHELL */
+  .wrap{
+    height:100%; width:100%; display:grid; place-items:center; padding:60px 16px 24px;
+  }
+  .gb{
+    position:relative;
+    width:min(920px, 94vw);
+    aspect-ratio: 3/5; /* portrait handset */
+    background: linear-gradient(145deg, var(--shell-light), var(--shell) 40%, var(--shell-dark) 100%);
+    border-radius: 36px;
+    box-shadow: var(--shadow);
+    border: 6px solid #2c0d76;
+  }
+  .gb::after{
+    /* subtle top highlight */
+    content:""; position:absolute; inset:0; border-radius:36px; pointer-events:none;
+    box-shadow: inset 0 18px 32px rgba(255,255,255,0.18), inset 0 -18px 28px rgba(0,0,0,0.18);
+  }
+
+  /* SCREEN WINDOW */
+  .screen-bezel{
+    position:absolute; left:6%; right:6%; top:7%;
+    aspect-ratio: 5/3;
+    background: linear-gradient(180deg, #222, #111 60%, #000);
+    border-radius: 22px; padding:14px; box-shadow: inset 0 0 0 2px #000;
+  }
+  .screen{
+    position:relative; width:100%; height:100%;
+    background: var(--screen-edge);
+    border-radius: 12px;
+    display:grid; place-items:center;
+    padding:6px;
+  }
+  .screen-inner{
+    width:100%; height:100%; background: var(--screen);
+    border-radius: 8px;
+    image-rendering: pixelated; /* crispy canvas */
     overflow:hidden;
+    position:relative;
   }
-  .world{
-    position:absolute; left:0; top:0; height:100%;
-    width: 50000px; /* plenty of side-scroll runway */
-    will-change: transform;
-    transition: transform 0.1s linear;
-  }
-
-  /* Ground stripe for 8-bit look */
-  .ground{
-    position:absolute; left:0; right:0; bottom:0; height: 28%;
-    background:
-      linear-gradient(to top, var(--ground) 0, var(--ground) 65%, var(--grass) 66%, transparent 66%);
-  }
-
-  /* Player “pixel dude” */
-  .player-wrap{
-    position:absolute; left:50%; bottom: 25%;
-    transform: translateX(-50%);
-    width: calc(var(--pixel) * 9);
-    height: calc(var(--pixel) * 12);
-    z-index: 5;
-  }
-  .player{
-    width:100%; height:100%; position:relative;
+  canvas#screen{
+    width:100%; height:100%;
+    display:block;
     image-rendering: pixelated;
   }
-  /* Build a little pixel person from blocks */
-  .px{ position:absolute; width:var(--pixel); height:var(--pixel); background:var(--black); }
-  /* head */
-  .px.h1{ left: calc(var(--pixel)*4); top:0; background:#f2c199; }
-  .px.h2{ left: calc(var(--pixel)*3); top:var(--pixel); background:#f2c199; }
-  .px.h3{ left: calc(var(--pixel)*4); top:var(--pixel); background:#f2c199; }
-  .px.h4{ left: calc(var(--pixel)*5); top:var(--pixel); background:#f2c199; }
-  .px.h5{ left: calc(var(--pixel)*4); top:calc(var(--pixel)*2); background:#f2c199; }
-  /* body */
-  .px.b1{ left: calc(var(--pixel)*3); top:calc(var(--pixel)*4); background:var(--purple); }
-  .px.b2{ left: calc(var(--pixel)*4); top:calc(var(--pixel)*4); background:var(--purple); }
-  .px.b3{ left: calc(var(--pixel)*5); top:calc(var(--pixel)*4); background:var(--purple); }
-  .px.b4{ left: calc(var(--pixel)*3); top:calc(var(--pixel)*5); background:var(--purple); }
-  .px.b5{ left: calc(var(--pixel)*4); top:calc(var(--pixel)*5); background:var(--purple); }
-  .px.b6{ left: calc(var(--pixel)*5); top:calc(var(--pixel)*5); background:var(--purple); }
-  /* legs */
-  .px.l1{ left: calc(var(--pixel)*3); top:calc(var(--pixel)*7); background:#333; }
-  .px.l2{ left: calc(var(--pixel)*5); top:calc(var(--pixel)*7); background:#333; }
-  .px.l3{ left: calc(var(--pixel)*3); top:calc(var(--pixel)*8); background:#333; }
-  .px.l4{ left: calc(var(--pixel)*5); top:calc(var(--pixel)*8); background:#333; }
-  .px.s1{ left: calc(var(--pixel)*3); top:calc(var(--pixel)*9); background:#000; } /* shoes */
-  .px.s2{ left: calc(var(--pixel)*5); top:calc(var(--pixel)*9); background:#000; }
+  .screen-label{
+    position:absolute; left:12px; bottom:10px; color:#0b2e0b; font-weight:900; font-size:12px; opacity:.6;
+  }
 
-  /* Up-arrow hint (shows only when aligned with a house) */
-  .hint{
-    position:absolute; left:50%; transform:translateX(-50%);
-    bottom: calc(25% + var(--pixel)*14);
-    padding:4px 8px;
-    background:var(--yellow);
-    color:var(--black);
-    border-radius:8px;
-    font-weight:800;
-    font-size:12px;
-    display:none;
-    z-index:6;
+  /* LOGO badge on the shell */
+  .logo-badge{
+    position:absolute; left:8%; top:4%;
+    display:flex; align-items:center; gap:10px;
+    color:#fff; font-family: BrotherBold, sans-serif; letter-spacing:.4px;
+    text-shadow: 0 1px 0 rgba(0,0,0,.35);
   }
-  .hint.show{ display:block; }
+  .logo-badge img{ width:32px; height:32px; filter: drop-shadow(0 1px 0 rgba(0,0,0,.4)); }
 
-  /* Houses (events) */
-  .house{
-    --w: 220px;
-    position:absolute; bottom: 28%;
-    width: var(--w);
-    transform: translateY(0);
-    text-align:center;
+  /* CATEGORY TOGGLER */
+  .toggle{
+    position:absolute; right:8%; top:4%;
+    display:inline-flex; border:2px solid #fff; border-radius:999px; overflow:hidden;
+    box-shadow:0 2px 0 rgba(0,0,0,.18);
   }
-  .house .roof{
-    width: calc(var(--w) * 0.9);
-    margin: 0 auto;
-    height: 0;
-    border-left: calc(var(--w) * 0.45) solid transparent;
-    border-right: calc(var(--w) * 0.45) solid transparent;
-    border-bottom: calc(var(--w) * 0.30) solid var(--purple);
-    position: relative;
-    filter: drop-shadow(0 4px 0 rgba(0,0,0,0.2));
+  .toggle button{
+    padding:6px 12px; border:none; background:transparent; color:#fff; font-weight:900; cursor:pointer;
   }
-  .house .roof .title{
-    position:absolute; bottom:-6px; left:50%; transform:translateX(-50%);
-    color:var(--white);
-    font-family: BrotherBold, sans-serif;
-    font-size: 14px;
-    width: 92%;
-    white-space: nowrap;
-    overflow:hidden;
-    text-overflow: ellipsis;
-  }
-  .house .body{
-    width: 100%;
-    height: 120px;
-    background: #fff;
-    border: 4px solid #2d1c4a;
-    border-radius: 6px;
-    box-shadow: 0 6px 0 rgba(0,0,0,0.2);
+  .toggle button[aria-pressed="true"]{ background:#fff; color:var(--shell-dark); }
+
+  /* D-PAD (up, left, right only) */
+  .dpad{
+    position:absolute; left:11%; bottom:10%;
+    width:160px; height:160px;
     display:grid; place-items:center;
-    padding: 10px;
   }
-  .house .body .when{
-    background: var(--yellow); color:var(--black);
-    padding:4px 8px; border-radius:999px; font-weight:800; font-size:12px; margin-bottom:6px;
+  .stem{
+    position:absolute; background:#24104b; border:3px solid #0b0223; border-radius:12px;
+    box-shadow: inset 0 0 0 2px rgba(255,255,255,0.06), 0 4px 0 rgba(0,0,0,0.25);
   }
-  .house .door{
-    position:absolute; bottom:0; left:50%; transform:translateX(-50%);
-    width:40px; height:60px; background:#2d1c4a; border:3px solid #140825; border-bottom:none;
+  .stem.vert{ width:56px; height:160px; }
+  .stem.horz{ width:160px; height:56px; }
+  .d-btn{
+    position:absolute; width:56px; height:56px; background: radial-gradient(circle at 35% 35%, #3a1b7a, #230c53);
+    border:2px solid #0b0223; border-radius:10px; color:#fff; font-weight:900; cursor:pointer;
+    display:grid; place-items:center; box-shadow:0 3px 0 rgba(0,0,0,.35);
   }
+  .d-btn:active{ transform:translateY(1px); }
+  .d-up{ top:0; left:52px; }
+  .d-left{ left:0; top:52px; }
+  .d-right{ right:0; top:52px; }
+  .d-btn span{ transform: translateY(-1px); }
 
-  /* Controls (mobile friendly) */
-  .controls{
-    position: fixed; left:0; right:0; bottom:10px; z-index:60;
-    display:flex; justify-content:center; gap:10px;
+  /* A/B buttons repurposed as “Details” & “Save” (optional) */
+  .ab{
+    position:absolute; right:11%; bottom:12%;
+    display:flex; gap:16px; align-items:center;
   }
-  .ctrl{
-    padding:10px 14px; border-radius:10px; border:2px solid var(--purple); background:#fff; color:var(--purple);
-    font-weight:800; cursor:pointer; min-width:60px; text-align:center;
-    box-shadow:0 2px 0 rgba(0,0,0,.08);
+  .round{
+    width:64px; height:64px; border-radius:50%;
+    background: radial-gradient(circle at 35% 35%, #ffd94d, #c0a300);
+    border:3px solid #6a5c00; box-shadow:0 4px 0 rgba(0,0,0,.35);
+    font-weight:900; color:#000; display:grid; place-items:center; cursor:pointer;
   }
-  .ctrl.primary{ background:var(--purple); color:#fff; }
-  .ctrl[disabled]{ opacity:.4; pointer-events:none; }
+  .round:active{ transform: translateY(1px); }
 
-  /* Modal */
+  /* Saved drawer & modal reuse previous styling */
+  #saved-panel{
+    position:fixed; right:0; top:0; height:100%; width:min(92vw,420px);
+    background:#fff; color:var(--ink); border-left:1px solid rgba(0,0,0,.08);
+    transform:translateX(100%); transition:transform .25s ease; z-index:120; display:grid; grid-template-rows:auto 1fr;
+  }
+  #saved-panel.open{ transform:translateX(0); }
+  #saved-panel header{ display:flex; align-items:center; justify-content:space-between; padding:14px 16px; border-bottom:1px solid rgba(0,0,0,.08); }
+  #saved-list{ overflow:auto; padding:12px; display:grid; gap:10px; }
+  .saved-item{ border:1px solid rgba(0,0,0,.12); border-radius:12px; padding:12px; display:grid; gap:6px; background:#fff; }
+  .saved-item .title{ font-weight:800; color:var(--purple); }
+  .saved-item .meta{ color:var(--ink-2); font-weight:700; }
+  .saved-item .row{ display:flex; gap:8px; flex-wrap:wrap; margin-top:6px; }
+  .btn{ padding:8px 12px; border-radius:999px; border:2px solid var(--purple); background:transparent; color:var(--purple); font-weight:800; cursor:pointer; }
+  .btn.primary{ background:var(--purple); color:#fff; }
+
   .modal-backdrop{
     position:fixed; inset:0; background:rgba(0,0,0,.45);
     display:none; align-items:center; justify-content:center; padding:16px; z-index:100;
@@ -234,70 +206,65 @@
   .modal .close{ border:none; background:transparent; font-size:24px; line-height:1; cursor:pointer; color:#444; }
   .modal .meta{ display:grid; gap:6px; margin:10px 0 16px; color:var(--ink-2); font-weight:700; }
   .modal .actions{ display:flex; flex-wrap:wrap; gap:10px; margin-top:12px; }
-  .btn{ padding:10px 14px; border-radius:999px; border:2px solid var(--purple); background:transparent; color:var(--purple); font-weight:800; cursor:pointer; }
-  .btn.primary{ background:var(--purple); color:#fff; }
 
-  /* Saved drawer */
-  #saved-panel{
-    position:fixed; right:0; top:0; height:100%; width:min(92vw,420px);
-    background:#fff; color:var(--ink);
-    border-left:1px solid rgba(0,0,0,.08);
-    transform:translateX(100%); transition:transform .25s ease; z-index:120;
-    display:grid; grid-template-rows:auto 1fr;
+  /* Up hint overlay within screen (pixel font look) */
+  .hint{
+    position:absolute; top:6px; right:8px; z-index:5;
+    background:#0b2e0b; color:#b6d64b; border:2px solid #215a21; border-radius:6px; padding:4px 6px; font-weight:900; font-size:12px;
+    display:none;
   }
-  #saved-panel.open{ transform:translateX(0); }
-  #saved-panel header{ display:flex; align-items:center; justify-content:space-between; padding:14px 16px; border-bottom:1px solid rgba(0,0,0,.08); }
-  #saved-list{ overflow:auto; padding:12px; display:grid; gap:10px; }
-  .saved-item{ border:1px solid rgba(0,0,0,.12); border-radius:12px; padding:12px; display:grid; gap:6px; background:#fff; }
-  .saved-item .title{ font-weight:800; color:var(--purple); }
-  .saved-item .meta{ color:var(--ink-2); font-weight:700; }
-  .saved-item .row{ display:flex; gap:8px; flex-wrap:wrap; margin-top:6px; }
+  .hint.show{ display:block; }
 </style>
 </head>
 <body>
 
 <header class="topbar" role="banner">
-  <div class="brand" aria-label="Brand">
+  <div class="brand">
     <img src="./SocialBurstRandomizer/img/logo.png" alt="SocialBurst logo"/>
     <div class="name">SocialBurst</div>
   </div>
   <div class="spacer"></div>
-
-  <div class="pill-group" role="tablist" aria-label="Category">
-    <button id="tab-events" class="pill" role="tab" aria-selected="true" aria-pressed="true">Events</button>
-    <button id="tab-deals" class="pill" role="tab" aria-selected="false" aria-pressed="false">Deals</button>
-  </div>
-
-  <button id="btn-saved" class="saved-btn" aria-haspopup="true" aria-controls="saved-panel" aria-expanded="false">
-    Saved <span id="saved-count" class="badge">0</span>
-  </button>
+  <button id="btn-saved" class="saved-btn">Saved <span id="saved-count" class="badge">0</span></button>
 </header>
 
-<div class="viewport" id="viewport" aria-label="Explorer viewport">
-  <div class="world" id="world" style="transform:translateX(0)">
-    <div class="ground"></div>
-
-    <!-- Player (fixed in viewport) -->
-    <div class="player-wrap" id="playerWrap">
-      <div class="player" id="player">
-        <!-- tiny pixel-person blocks -->
-        <div class="px h1"></div><div class="px h2"></div><div class="px h3"></div><div class="px h4"></div><div class="px h5"></div>
-        <div class="px b1"></div><div class="px b2"></div><div class="px b3"></div><div class="px b4"></div><div class="px b5"></div><div class="px b6"></div>
-        <div class="px l1"></div><div class="px l2"></div><div class="px l3"></div><div class="px l4"></div><div class="px s1"></div><div class="px s2"></div>
-      </div>
-      <div class="hint" id="hint">Press ↑ to enter</div>
+<div class="wrap">
+  <div class="gb" role="application" aria-label="SocialBurst Game Boy Explorer">
+    <div class="logo-badge">
+      <img src="./SocialBurstRandomizer/img/logo.png" alt="">
+      <div>GAME • BURST</div>
     </div>
 
-    <!-- Houses injected here -->
-    <div id="houses"></div>
-  </div>
-</div>
+    <div class="toggle" role="tablist" aria-label="Category">
+      <button id="tab-events" role="tab" aria-pressed="true" aria-selected="true">Events</button>
+      <button id="tab-deals" role="tab" aria-pressed="false" aria-selected="false">Deals</button>
+    </div>
 
-<!-- Controls -->
-<div class="controls" aria-label="Controls">
-  <button class="ctrl" id="btn-left">◀︎</button>
-  <button class="ctrl primary" id="btn-up" disabled>↑ Enter</button>
-  <button class="ctrl" id="btn-right">▶︎</button>
+    <!-- Screen -->
+    <div class="screen-bezel">
+      <div class="screen">
+        <div class="screen-inner">
+          <canvas id="screen" width="256" height="160" aria-label="Game screen"></canvas>
+          <div id="hint" class="hint">↑ ENTER</div>
+        </div>
+        <div class="screen-label">SOCIALBURST DOT MATRIX</div>
+      </div>
+    </div>
+
+    <!-- D-Pad -->
+    <div class="dpad" aria-label="D-pad">
+      <div class="stem vert"></div>
+      <div class="stem horz"></div>
+      <button class="d-btn d-up" id="d-up" aria-label="Up"><span>↑</span></button>
+      <button class="d-btn d-left" id="d-left" aria-label="Left"><span>←</span></button>
+      <button class="d-btn d-right" id="d-right" aria-label="Right"><span>→</span></button>
+    </div>
+
+    <!-- AB (optional shortcuts) -->
+    <div class="ab">
+      <button class="round" id="btn-details" title="Open details">A</button>
+      <button class="round" id="btn-save" title="Save">B</button>
+    </div>
+  </div>
 </div>
 
 <!-- Details Modal -->
@@ -305,7 +272,7 @@
   <div class="modal">
     <header>
       <h2 id="modal-title">Title</h2>
-      <button id="modal-close" class="close" aria-label="Close details">×</button>
+      <button id="modal-close" class="close" aria-label="Close">×</button>
     </header>
     <div class="meta">
       <div id="modal-when" class="btn" style="cursor:default"></div>
@@ -326,41 +293,32 @@
 <aside id="saved-panel" aria-label="Saved items" aria-hidden="true">
   <header>
     <strong>Saved</strong>
-    <button id="saved-close" class="btn" aria-label="Close saved">Close</button>
+    <button id="saved-close" class="btn" aria-label="Close">Close</button>
   </header>
   <div id="saved-list"></div>
 </aside>
 
 <script>
-/* ===================== CONFIG ===================== */
-var CSV_URL = "https://docs.google.com/spreadsheets/d/<SHEET_ID>/pub?gid=<GID_TODAY>&single=true&output=csv"; // <- replace me
-var CATEGORY = 'events'; // default tab
+/* ================= CONFIG ================= */
+var CSV_URL = "https://docs.google.com/spreadsheets/d/<SHEET_ID>/pub?gid=<GID_TODAY>&single=true&output=csv"; // <- replace with your Today CSV
 
-/* ===================== STATE ===================== */
-var ITEMS = [];      // current category items
-var EVENTS = [];
-var DEALS  = [];
-var playerX = 0;     // world-space coordinate
-var worldOffset = 0; // translateX of .world (parallax)
-var speed = 10;      // px per step
-var canEnterId = null;
-
-/* ===================== ELEMENTS ===================== */
-var worldEl = document.getElementById('world');
-var housesEl = document.getElementById('houses');
-var hintEl = document.getElementById('hint');
-var btnLeft = document.getElementById('btn-left');
-var btnRight = document.getElementById('btn-right');
-var btnUp = document.getElementById('btn-up');
-var viewportEl = document.getElementById('viewport');
+/* ================= ELEMENTS ================= */
+var canvas = document.getElementById('screen');
+var ctx = canvas.getContext('2d');
+ctx.imageSmoothingEnabled = false;
 
 var tabEvents = document.getElementById('tab-events');
-var tabDeals  = document.getElementById('tab-deals');
-var savedBtn  = document.getElementById('btn-saved');
+var tabDeals = document.getElementById('tab-deals');
+var dUp = document.getElementById('d-up');
+var dLeft = document.getElementById('d-left');
+var dRight = document.getElementById('d-right');
+var hintEl = document.getElementById('hint');
+
+var btnSaved = document.getElementById('btn-saved');
 var savedCountEl = document.getElementById('saved-count');
 var savedPanel = document.getElementById('saved-panel');
 var savedClose = document.getElementById('saved-close');
-var savedList  = document.getElementById('saved-list');
+var savedList = document.getElementById('saved-list');
 
 var modalBackdrop = document.getElementById('modal-backdrop');
 var modalTitle = document.getElementById('modal-title');
@@ -371,54 +329,86 @@ var modalPhone = document.getElementById('modal-phone');
 var modalDesc = document.getElementById('modal-desc');
 var modalLinks = document.getElementById('modal-links');
 var modalIcs = document.getElementById('modal-ics');
-var modalSave = document.getElementById('modal-save');
 var modalClose = document.getElementById('modal-close');
+var modalSave = document.getElementById('modal-save');
 
-/* ===================== BOOT ===================== */
+var btnA = document.getElementById('btn-details');
+var btnB = document.getElementById('btn-save');
+
+/* ================= STATE ================= */
+var CATEGORY = 'events';
+var EVENTS = [];
+var DEALS = [];
+var ITEMS = [];
+var houses = [];     // [{id, x, title}]
+var player = { x: 10, y: 120, w: 8, h: 12, vx: 0 };
+var speed = 1.5;     // pixels per frame in 256x160 space
+var worldW = 256*6;  // world width
+var cameraX = 0;
+var canEnterId = null;
+var currentOpen = null;
+
+/* ================= BOOT ================= */
 window.addEventListener('DOMContentLoaded', function(){
   wireUI();
   hydrate().then(function(){
     setCategory('events');
+    resizeToContainer(); // ensure crisp scaling
     updateSavedBadge();
-    loop();
+    requestAnimationFrame(loop);
   });
 });
+window.addEventListener('resize', resizeToContainer);
 
-/* ===================== UI ===================== */
 function wireUI(){
-  btnLeft.addEventListener('click', function(){ move(-1); });
-  btnRight.addEventListener('click', function(){ move(1); });
-  btnUp.addEventListener('click', tryEnter);
+  tabEvents.addEventListener('click', function(){ setCategory('events'); });
+  tabDeals.addEventListener('click', function(){ setCategory('deals'); });
+
+  dLeft.addEventListener('click', function(){ nudge(-1); });
+  dRight.addEventListener('click', function(){ nudge(1); });
+  dUp.addEventListener('click', tryEnter);
+
+  btnA.addEventListener('click', function(){ if (canEnterId){ var it = findById(canEnterId); if(it) openDetails(it); }});
+  btnB.addEventListener('click', function(){ if (currentOpen) saveItem(currentOpen); });
 
   document.addEventListener('keydown', function(e){
     if (modalBackdrop.style.display === 'flex'){
-      if (e.key === 'Escape'){ closeModal(); }
+      if (e.key === 'Escape') closeModal();
+      if (e.key === 'b' || e.key === 'B') { if (currentOpen) saveItem(currentOpen); }
       return;
     }
-    if (e.key === 'ArrowLeft')  move(-1);
-    if (e.key === 'ArrowRight') move(1);
+    if (e.key === 'ArrowLeft')  { player.vx = -speed; }
+    if (e.key === 'ArrowRight') { player.vx =  speed; }
     if (e.key === 'ArrowUp' || e.key === 'Enter') tryEnter();
+    if (e.key === 'a' || e.key === 'A'){ if (canEnterId){ var it = findById(canEnterId); if (it) openDetails(it); } }
+    if (e.key === 'b' || e.key === 'B'){ if (currentOpen) saveItem(currentOpen); }
+  });
+  document.addEventListener('keyup', function(e){
+    if (e.key === 'ArrowLeft' && player.vx < 0) player.vx = 0;
+    if (e.key === 'ArrowRight' && player.vx > 0) player.vx = 0;
   });
 
-  tabEvents.addEventListener('click', function(){ setCategory('events'); });
-  tabDeals.addEventListener('click',  function(){ setCategory('deals'); });
-
-  savedBtn.addEventListener('click', toggleSavedPanel);
+  btnSaved.addEventListener('click', toggleSavedPanel);
   savedClose.addEventListener('click', function(){ setSavedPanel(false); });
 
   modalBackdrop.addEventListener('click', function(e){ if (e.target===modalBackdrop) closeModal(); });
   modalClose.addEventListener('click', closeModal);
-  modalSave.addEventListener('click', function(){ if (openItem) saveItem(openItem); });
+  modalSave.addEventListener('click', function(){ if (currentOpen) saveItem(currentOpen); });
 }
 
-/* ===================== DATA ===================== */
+function resizeToContainer(){
+  // canvas is sized via CSS; keep pixel-perfect via no smoothing
+  ctx.imageSmoothingEnabled = false;
+}
+
+/* ================= DATA ================= */
 function hydrate(){
-  return fetch(CSV_URL, {cache:'no-store'})
+  return fetch(CSV_URL, { cache:'no-store' })
     .then(function(res){ if(!res.ok) throw new Error(res.status); return res.text(); })
     .then(function(text){
-      var objects = parseCsvToObjects(text);
-      var pr = partitionByType(objects);
-      EVENTS = pr.events; DEALS = pr.deals;
+      var objects = parseCsv(text);
+      var parts = partition(objects);
+      EVENTS = parts.events; DEALS = parts.deals;
       if (!EVENTS.length && !DEALS.length){
         var fb = fallback();
         EVENTS = fb.events; DEALS = fb.deals;
@@ -430,45 +420,44 @@ function hydrate(){
     });
 }
 
-/* CSV parsing with quotes */
-function parseCsvToObjects(text){
+function parseCsv(text){
   if (!text || !text.trim()) return [];
-  var rows = csvToRows(text);
+  var rows = csvRows(text);
   if (!rows.length) return [];
   var headers = rows[0].map(function(h){ return String(h||'').trim().toLowerCase(); });
-  var items = [];
+  var out = [];
   for (var i=1; i<rows.length; i++){
-    var row = rows[i];
-    if (row.every(function(c){ return !String(c||'').trim(); })) continue;
-    var obj = {};
-    for (var j=0; j<headers.length; j++) obj[headers[j] || ('col_'+j)] = (row[j] == null ? '' : String(row[j])).trim();
-    items.push(normalize(obj, i));
+    var r = rows[i]; if (r.every(function(c){ return !String(c||'').trim(); })) continue;
+    var o = {};
+    for (var j=0; j<headers.length; j++) o[headers[j] || ('col_'+j)] = (r[j] == null ? '' : String(r[j])).trim();
+    out.push(normalizeRow(o, i));
   }
-  return items;
+  return out;
 }
-function csvToRows(text){
-  var rows=[],cur='',row=[],inQ=false;
+function csvRows(text){
+  var rows=[],cur='',row=[],q=false;
   for (var i=0;i<text.length;i++){
     var ch=text[i], nx=text[i+1];
-    if (ch === '"'){ if(inQ && nx === '"'){ cur+='"'; i++; } else inQ=!inQ; }
-    else if (ch===',' && !inQ){ row.push(cur); cur=''; }
-    else if ((ch==='\n'||ch==='\r') && !inQ){ if(ch==='\r'&&nx==='\n') i++; row.push(cur); rows.push(row); row=[]; cur=''; }
+    if (ch === '"'){ if (q && nx === '"'){ cur+='"'; i++; } else q=!q; }
+    else if (ch===',' && !q){ row.push(cur); cur=''; }
+    else if ((ch==='\n'||ch==='\r') && !q){ if (ch==='\r'&&nx==='\n') i++; row.push(cur); rows.push(row); row=[]; cur=''; }
     else cur+=ch;
   }
   row.push(cur); rows.push(row); return rows;
 }
-function normalize(obj, idx){
-  function pick(list, def){ for (var k=0;k<list.length;k++){ var v=obj[list[k]]; if (v!=null && String(v).trim()!=='') return String(v).trim(); } return def||''; }
-  var type = pick(['type','category'],'').toLowerCase() === 'deal' ? 'deal' : 'event';
-  var title= pick(['title','name']);
+function normalizeRow(obj, idx){
+  function pick(keys, def){ for(var k=0;k<keys.length;k++){ var v=obj[keys[k]]; if(v!=null && String(v).trim()!=='') return String(v).trim(); } return def||''; }
+  var type = pick(['type','category'],'').toLowerCase()==='deal' ? 'deal' : 'event';
+  var title= pick(['title','name']) || 'Untitled';
   var venue= pick(['venue','venue_name','business','place']);
   var when = pick(['when','time','window','start_datetime']);
   var desc = pick(['description','details','desc']);
   var link = pick(['link','url','website','source_url']);
   var addr = pick(['address','addr','location']);
   var phone= pick(['phone','tel','telephone']);
-  var s = parseTime(pick(['start_datetime'], ''));
-  var e = parseTime(pick(['end_datetime'], ''));
+
+  var s = parseTime(pick(['start_datetime'],''));
+  var e = parseTime(pick(['end_datetime'],''));
   if (s || e){
     var sTxt = s ? s.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '';
     var eTxt = e ? e.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '';
@@ -476,10 +465,11 @@ function normalize(obj, idx){
     else if (s) when = 'Today ' + sTxt;
     else if (e) when = 'Until ' + eTxt + ' today';
   }
+
   return {
-    id: stableId(title+'|'+venue+'|'+when+'|'+idx),
-    type:type, title:title||'Untitled', venue:venue||'', when:when||'Today',
-    description:desc, short:'', link:link||undefined, address:addr||undefined, phone:phone||undefined
+    id: hashId(title+'|'+venue+'|'+when+'|'+idx),
+    type:type, title:title, venue:venue||'', when:when||'Today',
+    description:desc||'', short:'', link:link||undefined, address:addr||undefined, phone:phone||undefined
   };
 }
 function parseTime(s){
@@ -491,7 +481,7 @@ function parseTime(s){
   if(ap==='pm'&&h<12)h+=12; if(ap==='am'&&h===12)h=0;
   var dt=new Date(y,mo-1,d,h,mm,0,0); return isNaN(+dt)?null:dt;
 }
-function partitionByType(items){
+function partition(items){
   var ev=[], de=[];
   for (var i=0;i<items.length;i++) (items[i].type==='deal'?de:ev).push(items[i]);
   return {events:ev, deals:de};
@@ -510,9 +500,9 @@ function fallback(){
   };
 }
 
-/* ===================== WORLD & HOUSES ===================== */
+/* ================= WORLD GEN ================= */
 function setCategory(kind){
-  CATEGORY = (kind==='deals') ? 'deals' : 'events';
+  CATEGORY = (kind==='deals')?'deals':'events';
   tabEvents.setAttribute('aria-pressed', String(CATEGORY==='events'));
   tabDeals.setAttribute('aria-pressed',  String(CATEGORY==='deals'));
   tabEvents.setAttribute('aria-selected', String(CATEGORY==='events'));
@@ -520,100 +510,151 @@ function setCategory(kind){
 
   ITEMS = (CATEGORY==='events'?EVENTS:DEALS).slice();
   buildHouses();
-  centerOn(0);
+  player.x = 10; cameraX = 0;
+  canEnterId = null;
 }
+
 function buildHouses(){
-  housesEl.innerHTML = '';
-  var x = 200; // starting offset
-  var gap = 380; // distance between houses
-
+  houses = [];
+  var x = 40; var gap = 110; // logical pixels in 256x160 space
   for (var i=0;i<ITEMS.length;i++){
-    var it = ITEMS[i];
-    var h = document.createElement('div');
-    h.className = 'house';
-    h.style.left = x + 'px';
-    h.dataset.id = it.id;
-
-    var roof = document.createElement('div'); roof.className='roof';
-    var title = document.createElement('div'); title.className='title'; title.textContent = it.title;
-    roof.appendChild(title);
-
-    var body = document.createElement('div'); body.className='body';
-    var when = document.createElement('div'); when.className='when'; when.textContent = it.when || 'Today';
-    var venue= document.createElement('div'); venue.textContent = it.venue || '';
-    body.appendChild(when); body.appendChild(venue);
-
-    var door = document.createElement('div'); door.className='door';
-
-    h.appendChild(roof); h.appendChild(body); h.appendChild(door);
-    housesEl.appendChild(h);
-
+    houses.push({ id:ITEMS[i].id, title:ITEMS[i].title, when:ITEMS[i].when, x:x });
     x += gap;
   }
+  worldW = Math.max(256, (houses.length? houses[houses.length-1].x + 120 : 256));
 }
 
-/* ===================== MOVEMENT ===================== */
-function move(dir){
-  playerX += dir * speed;
-  if (playerX < 0) playerX = 0;
-  centerOn(playerX);
-  checkAlign();
-}
-function centerOn(px){
-  // Keep the player centered; move the world instead
-  var vpW = viewportEl.clientWidth;
-  worldOffset = -px + (vpW/2);
-  if (worldOffset > 0) worldOffset = 0; // don’t scroll past start
-  worldEl.style.transform = 'translateX(' + worldOffset + 'px)';
-}
-function checkAlign(){
-  var vpCenter = viewportEl.clientWidth/2;
-  var threshold = 60; // how close to center to show "enter"
-  var chosen = null;
-
-  var kids = housesEl.children;
-  for (var i=0;i<kids.length;i++){
-    var rect = kids[i].getBoundingClientRect();
-    var houseCenter = rect.left + rect.width/2;
-    if (Math.abs(houseCenter - vpCenter) < threshold){
-      chosen = kids[i];
-      break;
-    }
-  }
-  if (chosen){
-    canEnterId = chosen.dataset.id;
-    hintEl.classList.add('show');
-    btnUp.disabled = false;
-  } else {
-    canEnterId = null;
-    hintEl.classList.remove('show');
-    btnUp.disabled = true;
-  }
-}
-
-/* ===================== GAME LOOP (subtle idle bob) ===================== */
-var t0 = performance.now();
-function loop(now){
-  var t = now || performance.now();
-  var bob = Math.sin((t - t0)/300) * 2;
-  document.getElementById('playerWrap').style.transform = 'translateX(-50%) translateY(' + bob + 'px)';
-  requestAnimationFrame(loop);
-}
-
-/* ===================== ENTER / MODAL ===================== */
-var openItem = null;
-function tryEnter(){
-  if (!canEnterId) return;
-  var it = findItem(canEnterId);
-  if (!it) return;
-  openItem = it;
-  openModal(it);
-}
-function findItem(id){
+function findById(id){
   for (var i=0;i<ITEMS.length;i++) if (ITEMS[i].id===id) return ITEMS[i];
   return null;
 }
-function openModal(item){
+
+/* ================= RENDER (8-bit) ================= */
+function loop(){
+  update();
+  render();
+  requestAnimationFrame(loop);
+}
+
+function update(){
+  player.x += player.vx;
+  if (player.x < 0) player.x = 0;
+  if (player.x > worldW-1) player.x = worldW-1;
+
+  // camera centers on player
+  cameraX = Math.round(player.x - (canvas.width/2));
+  if (cameraX < 0) cameraX = 0;
+  if (cameraX > worldW - canvas.width) cameraX = worldW - canvas.width;
+
+  // enter detection
+  var aligned = null;
+  for (var i=0;i<houses.length;i++){
+    var hx = houses[i].x;
+    if (Math.abs((hx - player.x)) < 8){ aligned = houses[i]; break; }
+  }
+  if (aligned){ canEnterId = aligned.id; hintEl.classList.add('show'); }
+  else { canEnterId = null; hintEl.classList.remove('show'); }
+}
+
+function render(){
+  // clear to green LCD
+  fillRect(0,0,canvas.width,canvas.height, 0x9bbc0f);
+
+  // sky dots
+  for (var i=0;i<canvas.width;i+=16){
+    putPixel(i+((Date.now()/150|0)%16), 10+(i%9), 0x6b8a0c);
+  }
+
+  // ground band
+  fillRect(0,120,canvas.width,40, 0x6b8a0c);
+  for (var y=120;y<160;y+=2) horizLine(0,y,canvas.width, (y%4===0)?0x4e7012:0x6b8a0c);
+
+  // houses
+  for (var i=0;i<houses.length;i++){
+    drawHouse(houses[i].x - cameraX, 120, houses[i].title);
+  }
+
+  // player
+  drawPlayer(Math.round(player.x - cameraX), Math.round(player.y));
+}
+
+function drawHouse(baseX, groundY, title){
+  // body
+  var w=32, h=20;
+  var x = baseX - Math.floor(w/2);
+  var y = groundY - h;
+  fillRect(x,y,w,h, 0xdde67a); // light wall
+  // door
+  fillRect(x+Math.floor(w/2)-3, y+h-10, 6, 10, 0x3a4a10);
+  // roof
+  tri(x-2, y, x+w+2, y, x+Math.floor(w/2), y-10, 0x567d2c);
+  // title as pixel text (clamped to width)
+  pixelText(title.toUpperCase(), x-1, y-12, 0x224b0f, 16);
+}
+
+function drawPlayer(x,y){
+  // simple 8-bit sprite
+  // head
+  fillRect(x-1, y-12, 6, 4, 0xf2c199);
+  // body
+  fillRect(x-2, y-8, 8, 6, 0x6332c8);
+  // legs
+  fillRect(x-1, y-2, 2, 2, 0x000000);
+  fillRect(x+2, y-2, 2, 2, 0x000000);
+}
+
+function nudge(dir){ player.vx = dir*speed; setTimeout(function(){ if ((dir<0 && player.vx<0) || (dir>0 && player.vx>0)) player.vx=0; }, 120); }
+
+/* ======== Tiny 8-bit draw helpers (no external libs) ======== */
+function putPixel(x,y,hex){
+  ctx.fillStyle = '#'+hex.toString(16).padStart(6,'0');
+  ctx.fillRect(x|0, y|0, 1, 1);
+}
+function fillRect(x,y,w,h,hex){
+  ctx.fillStyle = '#'+hex.toString(16).padStart(6,'0');
+  ctx.fillRect(x|0, y|0, w|0, h|0);
+}
+function horizLine(x,y,len,hex){ fillRect(x,y,len,1,hex); }
+function tri(x1,y1,x2,y2,x3,y3,hex){
+  ctx.fillStyle = '#'+hex.toString(16).padStart(6,'0');
+  ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.lineTo(x3,y3); ctx.closePath(); ctx.fill();
+}
+
+/* Pixel text: very tiny 3x5 font */
+var FONT = {
+  A:["010","101","111","101","101"], B:["110","101","110","101","110"], C:["011","100","100","100","011"],
+  D:["110","101","101","101","110"], E:["111","100","110","100","111"], F:["111","100","110","100","100"],
+  G:["011","100","101","101","011"], H:["101","101","111","101","101"], I:["111","010","010","010","111"],
+  J:["001","001","001","101","010"], K:["101","101","110","101","101"], L:["100","100","100","100","111"],
+  M:["101","111","111","101","101"], N:["101","111","111","111","101"], O:["010","101","101","101","010"],
+  P:["110","101","110","100","100"], Q:["010","101","101","111","011"], R:["110","101","110","101","101"],
+  S:["011","100","010","001","110"], T:["111","010","010","010","010"], U:["101","101","101","101","111"],
+  V:["101","101","101","101","010"], W:["101","101","111","111","101"], X:["101","101","010","101","101"],
+  Y:["101","101","010","010","010"], Z:["111","001","010","100","111"], " ":[ "000","000","000","000","000" ]
+};
+function pixelText(s, x, y, color, maxWidth){
+  var px = x, py = y, w = 4; // 3 wide + 1 space
+  var chars = Math.min(Math.floor((maxWidth||1000)/w), s.length);
+  for (var i=0;i<chars;i++){
+    var ch = s[i];
+    var g = FONT[ch] || FONT[" "];
+    for (var r=0;r<5;r++){
+      var row = g[r];
+      for (var c=0;c<3;c++) if (row[c]==='1') putPixel(px+c, py+r, color);
+    }
+    px += w;
+  }
+}
+
+/* ================= ENTER / MODAL ================= */
+function tryEnter(){
+  if (!canEnterId) return;
+  var it = findById(canEnterId);
+  if (!it) return;
+  openDetails(it);
+}
+function openDetails(item){
+  currentOpen = item;
   modalTitle.textContent = item.title || '(Untitled)';
   modalWhen.textContent = item.when || 'Today';
   modalVenue.textContent = item.venue || '';
@@ -621,108 +662,81 @@ function openModal(item){
   modalPhone.textContent = item.phone || '';
   modalDesc.textContent = item.description || '';
 
+  // links
   while (modalLinks.firstChild) modalLinks.removeChild(modalLinks.firstChild);
   if (item.link){
-    var a = document.createElement('a');
-    a.className='btn';
-    a.href = item.link; a.target='_blank'; a.rel='noopener';
-    a.textContent = 'Open link';
+    var a = document.createElement('a'); a.className='btn'; a.href=item.link; a.target='_blank'; a.rel='noopener'; a.textContent='Open link';
     modalLinks.appendChild(a);
   }
   if (item.address){
-    var g = document.createElement('a');
-    g.className='btn';
-    g.href = 'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(item.address);
-    g.target='_blank'; g.rel='noopener';
-    g.textContent='Get directions';
+    var g = document.createElement('a'); g.className='btn';
+    g.href='https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(item.address); g.target='_blank'; g.rel='noopener'; g.textContent='Get directions';
     modalLinks.appendChild(g);
   }
   if (item.phone){
-    var p = document.createElement('a');
-    p.className='btn';
-    p.href = 'tel:'+ item.phone.replace(/\s+/g,'');
-    p.textContent='Call';
+    var p = document.createElement('a'); p.className='btn'; p.href='tel:'+item.phone.replace(/\s+/g,''); p.textContent='Call';
     modalLinks.appendChild(p);
   }
   modalIcs.href = makeIcs(item);
-
-  modalBackdrop.style.display = 'flex';
+  modalBackdrop.style.display='flex';
 }
-function closeModal(){
-  modalBackdrop.style.display = 'none';
-}
+function closeModal(){ modalBackdrop.style.display='none'; }
 
-/* ===================== SAVED ===================== */
+/* ================= SAVED ================= */
 function getSaved(){ try{ return JSON.parse(localStorage.getItem('sb_saved')||'[]'); }catch(e){ return []; } }
 function setSaved(arr){ localStorage.setItem('sb_saved', JSON.stringify(arr)); }
 function updateSavedBadge(){ savedCountEl.textContent = String(getSaved().length); }
 function saveItem(item){
-  var arr = getSaved();
-  for (var i=0;i<arr.length;i++) if (arr[i].id===item.id) { closeModal(); return; }
+  var arr = getSaved(); for (var i=0;i<arr.length;i++) if (arr[i].id===item.id) { closeModal(); return; }
   arr.push(item); setSaved(arr); updateSavedBadge(); renderSavedList(); closeModal();
 }
 function removeSaved(id){
-  var arr = getSaved().filter(function(x){ return x.id!==id; });
-  setSaved(arr); updateSavedBadge(); renderSavedList();
+  var arr = getSaved().filter(function(x){ return x.id!==id; }); setSaved(arr); updateSavedBadge(); renderSavedList();
 }
 function renderSavedList(){
   savedList.innerHTML='';
   var arr = getSaved();
   if (!arr.length){ savedList.textContent='No saved items yet.'; return; }
   for (var i=0;i<arr.length;i++){
-    var it = arr[i];
-    var card = document.createElement('div'); card.className='saved-item';
-    var title = document.createElement('div'); title.className='title'; title.textContent = it.title;
-    var meta  = document.createElement('div'); meta.className='meta'; meta.textContent = (it.when||'Today') + (it.venue?(' • '+it.venue):'');
-    var row   = document.createElement('div'); row.className='row';
-    var det = document.createElement('button'); det.className='btn'; det.textContent='Details';
-    det.addEventListener('click', (function(copy){ return function(){ openModal(copy); }; })(it));
-    var rem = document.createElement('button'); rem.className='btn primary'; rem.textContent='Remove';
-    rem.addEventListener('click', (function(id){ return function(){ removeSaved(id); }; })(it.id));
-    row.appendChild(det); row.appendChild(rem);
-    card.appendChild(title); card.appendChild(meta); card.appendChild(row);
-    savedList.appendChild(card);
+    (function(it){
+      var card = document.createElement('div'); card.className='saved-item';
+      var title = document.createElement('div'); title.className='title'; title.textContent = it.title;
+      var meta  = document.createElement('div'); meta.className='meta'; meta.textContent = (it.when||'Today') + (it.venue?(' • '+it.venue):'');
+      var row = document.createElement('div'); row.className='row';
+      var det = document.createElement('button'); det.className='btn'; det.textContent='Details'; det.onclick=function(){ openDetails(it); };
+      var rem = document.createElement('button'); rem.className='btn primary'; rem.textContent='Remove'; rem.onclick=function(){ removeSaved(it.id); };
+      row.appendChild(det); row.appendChild(rem);
+      card.appendChild(title); card.appendChild(meta); card.appendChild(row);
+      savedList.appendChild(card);
+    })(arr[i]);
   }
 }
 function toggleSavedPanel(){ setSavedPanel(!savedPanel.classList.contains('open')); }
 function setSavedPanel(open){
-  if (open){ renderSavedList(); savedPanel.classList.add('open'); savedBtn.setAttribute('aria-expanded','true'); savedPanel.setAttribute('aria-hidden','false'); }
-  else { savedPanel.classList.remove('open'); savedBtn.setAttribute('aria-expanded','false'); savedPanel.setAttribute('aria-hidden','true'); }
+  if (open){ renderSavedList(); savedPanel.classList.add('open'); btnSaved.setAttribute('aria-expanded','true'); savedPanel.setAttribute('aria-hidden','false'); }
+  else { savedPanel.classList.remove('open'); btnSaved.setAttribute('aria-expanded','false'); savedPanel.setAttribute('aria-hidden','true'); }
 }
 
-/* ===================== ICS ===================== */
+/* ================= ICS ================= */
 function makeIcs(item){
   var now=new Date();
-  var start = parseWhenTime(item.when) || new Date(now.getFullYear(), now.getMonth(), now.getDate(), 19,0,0);
+  var start = parseWhen(item.when) || new Date(now.getFullYear(), now.getMonth(), now.getDate(), 19,0,0);
   var end   = new Date(start.getTime()+60*60*1000);
   function p(n){ return (n<10?'0':'')+n; }
   function fmt(dt){ return dt.getUTCFullYear()+p(dt.getUTCMonth()+1)+p(dt.getUTCDate())+'T'+p(dt.getUTCHours())+p(dt.getUTCMinutes())+p(dt.getUTCSeconds())+'Z'; }
   var lines=[
-    'BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//SocialBurst//8bit//EN','BEGIN:VEVENT',
-    'UID:'+item.id+'@socialburst','DTSTAMP:'+fmt(new Date()),
-    'DTSTART:'+fmt(start),'DTEND:'+fmt(end),
-    'SUMMARY:'+esc(item.title||''),'LOCATION:'+esc(item.venue||''),
-    'DESCRIPTION:'+esc((item.description||'')+(item.link?(' '+item.link):'')),
+    'BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//SocialBurst//GameBoy//EN','BEGIN:VEVENT',
+    'UID:'+item.id+'@socialburst','DTSTAMP:'+fmt(new Date()),'DTSTART:'+fmt(start),'DTEND:'+fmt(end),
+    'SUMMARY:'+esc(item.title||''),'LOCATION:'+esc(item.venue||''),'DESCRIPTION:'+esc((item.description||'')+(item.link?(' '+item.link):'')),
     'END:VEVENT','END:VCALENDAR'
   ];
   return URL.createObjectURL(new Blob([lines.join('\r\n')], {type:'text/calendar'}));
 }
 function esc(s){ return String(s).replace(/([,;])/g,'\\$1').replace(/\n/g,'\\n'); }
-function parseWhenTime(str){
-  var m=String(str||'').toLowerCase().match(/today\s+(\d{1,2}):(\d{2})/);
-  if(!m) return null; var h=+m[1], mi=+m[2]; var n=new Date(); return new Date(n.getFullYear(),n.getMonth(),n.getDate(),h,mi,0,0);
-}
+function parseWhen(str){ var m=String(str||'').toLowerCase().match(/today\s+(\d{1,2}):(\d{2})/); if(!m) return null; var h=+m[1], mi=+m[2]; var n=new Date(); return new Date(n.getFullYear(),n.getMonth(),n.getDate(),h,mi,0,0); }
 
-/* ===================== HELPERS ===================== */
-function stableId(s){ var h=0; for (var i=0;i<s.length;i++){ h=((h<<5)-h)+s.charCodeAt(i); h|=0; } return 'sb_'+Math.abs(h); }
-
-/* ===================== RENDER LOOP TICK ===================== */
-function loop(){ /* handled by requestAnimationFrame above */ }
-
-/* ===================== MISC ===================== */
-function centerPlayerOnClosestHouse(){
-  // optional helper to snap to house; not used by default
-}
+/* ================= UTILS ================= */
+function hashId(s){ var h=0; for (var i=0;i<s.length;i++){ h=((h<<5)-h)+s.charCodeAt(i); h|=0; } return 'sb_'+Math.abs(h); }
 </script>
 </body>
 </html>
