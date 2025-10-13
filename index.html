@@ -246,8 +246,25 @@ var PHYS = {
 /* PATCH END */
 /* PATCH START: define keys state */
 var keys = { left:false, right:false, up:false };
-/* PATCH END */
+/* PATCH END */%
+/* === PLAYER SPRITE CONFIG (folders + filenames) === */
+var PLAYER_SPR = {
+  scale: 1,   // bump to 2 if tiny
 
+  // EXACT case-sensitive folders + files you committed:
+  idle: { dir: "South", frames: ["0.png","1.png","2.png","3.png"], fps: 6 },
+  walk: { dir: "East",  frames: ["0.png","1.png","2.png","3.png","4.png","5.png"], fps: 10 }
+};
+
+// runtime containers
+var playerGfx = {
+  idleFrames: [],
+  walkFrames: [],
+  ready: false
+};
+
+// simple animation clock/state
+var anim = { t: 0, state: "idle" };
 /* ================= ELEMENTS ================= */
 var canvas = document.getElementById('screen');
 var ctx = canvas.getContext('2d'); ctx.imageSmoothingEnabled = false;
@@ -310,14 +327,46 @@ var defaultMap = {
 };
 var map = loadTileMap() || defaultMap;
 var tweak = { on:false, key:'grass', index:0 };
+/* === LOAD PER-FRAME PNGs === */
+function loadImage(url){
+  return new Promise(function(resolve, reject){
+    var img = new Image();
+    img.onload = function(){ resolve(img); };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
 
+function loadPlayerSprites(){
+  // base path to your player folders
+  var base = "./SocialBurstRandomizer/sprites/player/";
+
+  var idlePromises = PLAYER_SPR.idle.frames.map(function(f){
+    return loadImage(base + PLAYER_SPR.idle.dir + "/" + f);
+  });
+  var walkPromises = PLAYER_SPR.walk.frames.map(function(f){
+    return loadImage(base + PLAYER_SPR.walk.dir + "/" + f);
+  });
+
+  return Promise.all([ Promise.all(idlePromises), Promise.all(walkPromises) ])
+    .then(function(res){
+      playerGfx.idleFrames = res[0];
+      playerGfx.walkFrames = res[1];
+      playerGfx.ready = true;
+    })
+    .catch(function(err){
+      console.warn("Player sprite load failed:", err);
+      playerGfx.ready = false; // engine will fall back to the pixel block
+    });
+}
 /* ================= BOOT ================= */
 window.addEventListener('DOMContentLoaded', function(){
   wireUI();
-  Promise.all([
-    loadAtlas("./SocialBurstRandomizer/sprites/socialburst_tileset.png"),
-    hydrate()
-  ]).then(function(){
+ Promise.all([
+  loadAtlas("./SocialBurstRandomizer/sprites/socialburst_tileset.png"),
+  loadPlayerSprites(),
+  hydrate()
+]).then(function(){
     setCategory('events');
     updateSavedBadge();
     requestAnimationFrame(loop);
@@ -573,6 +622,10 @@ function update(dt){
   if (player.x < 0) player.x = 0;
   if (player.x > worldW - 8) player.x = worldW - 8;
 
+  // animation state & clock
+  anim.state = (player.vx !== 0) ? "walk" : "idle";
+  anim.t += dt;
+
   // simple walk animation (on/off)
   if (player.vx !== 0) { player.step = (player.step + 10*dt) % 2; } else { player.step = 0; }
 
@@ -703,25 +756,54 @@ function drawBuilding(h){
   pixelText(h.title.toUpperCase(), x, y-10, 0x143C0D, h.w);
 }
 
-/* PATCH START: better placeholder player */
-function drawPlayer(x,y){
+function drawPlayer(x, y){
   // shadow
   fillRect(x-3, y, 8, 1, 0x2b1b30);
 
-  // use tilesheet frame if mapped
-  if (typeof map.player === 'number'){ drawTileIndex(map.player, x-4, y-16); return; }
+  // if tilesheet index was used earlier, keep supporting it
+  if (typeof map.player === 'number' && !playerGfx.ready){
+    drawTileIndex(map.player, x-4, y-16);
+    return;
+  }
 
-  // fallback pixel dude (wobble when walking)
-  var wob = (player.step>1?1:0) * (player.facing>0?1:-1);
-  // head
-  fillRect(x-2, y-14, 6, 5, 0xf2c199);
-  // body
-  fillRect(x-3, y-9,  8, 6, 0x6332c8);
-  // legs
+  // use PNG frames if loaded
+  if (playerGfx.ready){
+    var frames, fps;
+    if (anim.state === "walk"){
+      frames = playerGfx.walkFrames; fps = PLAYER_SPR.walk.fps;
+    } else {
+      frames = playerGfx.idleFrames; fps = PLAYER_SPR.idle.fps;
+    }
+    if (frames && frames.length){
+      var i = Math.floor(anim.t * fps) % frames.length;
+      var img = frames[i];
+      var scale = PLAYER_SPR.scale || 1;
+
+      var w = Math.round(img.width  * scale);
+      var h = Math.round(img.height * scale);
+
+      // draw with left/right flip
+      if (player.facing < 0){
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.scale(-1, 1);
+        // anchor: sprite bottom center at (x,y)
+        ctx.drawImage(img, -Math.floor(w/2), -h, w, h);
+        ctx.restore();
+      } else {
+        ctx.drawImage(img, Math.floor(x - w/2), y - h, w, h);
+      }
+      return;
+    }
+  }
+
+  // FALLBACK: tiny pixel dude (if frames not ready)
+  var wob = (player.vx!==0 ? ( ( (anim.t*10)|0 ) % 2 ) : 0) * (player.facing>0?1:-1);
+  fillRect(x-2, y-14, 6, 5, 0xf2c199); // head
+  fillRect(x-3, y-9,  8, 6, 0x6332c8); // body
   fillRect(x-3+wob, y-3, 3, 3, 0x222222);
   fillRect(x+2-wob, y-3, 3, 3, 0x222222);
 }
-/* PATCH END */
 
 /* ---------- UI: ENTER / MODAL ---------- */
 function tryEnter(){
