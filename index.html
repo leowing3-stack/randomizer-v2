@@ -714,6 +714,7 @@ function drawBuilding(h){
 }
 
 /* PATCH START: better placeholder player */
+function drawPlayer(x,y){
   // shadow
   fillRect(x-3, y, 8, 1, 0x2b1b30);
 
@@ -729,6 +730,7 @@ function drawBuilding(h){
   // legs
   fillRect(x-3+wob, y-3, 3, 3, 0x222222);
   fillRect(x+2-wob, y-3, 3, 3, 0x222222);
+}
 /* PATCH END */
 
 /* ---------- UI: ENTER / MODAL ---------- */
