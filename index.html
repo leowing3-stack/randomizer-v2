@@ -238,33 +238,39 @@
 /* ================= BASIC CONFIG ================= */
 var CSV_URL = "https://docs.google.com/spreadsheets/d/<SHEET_ID>/pub?gid=<GID_TODAY>&single=true&output=csv";
 var TILE = 16, GROUND_Y = 120;
-/* PATCH START: walk-only physics (no inertia) */
 var PHYS = {
-  walkSpeed: 60,   // pixels per second while a key is held
-  deadzone: 36     // camera deadzone half-width (px)
+  walkSpeed: 60,        // px/s
+  deadzone: 36,         // camera deadzone half-width (px)
+  gravity: 900,         // px/s^2 (tweak feel)
+  jumpVel: 280,         // px/s upward (impulse)
+  termVel: 600,         // clamp fall speed
+  coyoteTime: 0.08,     // seconds after leaving ground you can still jump
+  jumpBuffer: 0.12      // seconds before landing to queue a jump
 };
-/* PATCH END */
 /* PATCH START: define keys state */
-var keys = { left:false, right:false, up:false };
+var keys = { left:false, right:false, up:false, jump:false };
 /* PATCH END */
 /* === PLAYER SPRITE CONFIG (folders + filenames) === */
 var PLAYER_SPR = {
-  scale: 1,   // bump to 2 if tiny
+  scale: 1,   // bump to 2 if sprite is tiny
 
-  // EXACT case-sensitive folders + files you committed:
   idle: { dir: "south", frames: ["0.png","1.png","2.png","3.png"], fps: 6 },
-  walk: { dir: "east",  frames: ["0.png","1.png","2.png","3.png","4.png","5.png"], fps: 10 }
+  walk: { dir: "east",  frames: ["0.png","1.png","2.png","3.png","4.png","5.png"], fps: 10 },
+
+  // NEW: 9-frame jump
+  jump: { dir: "jump",  frames: ["0.png","1.png","2.png","3.png","4.png","5.png","6.png","7.png","8.png"], fps: 18 }
 };
 
 // runtime containers
 var playerGfx = {
   idleFrames: [],
   walkFrames: [],
+  jumpFrames: [],
   ready: false
 };
 
 // simple animation clock/state
-var anim = { t: 0, state: "idle" };
+var anim = { t: 0, state: "idle", playedJumpOnce: false };
 /* ================= ELEMENTS ================= */
 var canvas = document.getElementById('screen');
 var ctx = canvas.getContext('2d'); ctx.imageSmoothingEnabled = false;
@@ -302,7 +308,17 @@ var CATEGORY='events', EVENTS=[], DEALS=[], ITEMS=[];
 var worldW=256*6, cameraX=0, canEnterId=null, currentOpen=null;
 
 /* Player */
-var player = { x: 16, y:GROUND_Y, vx:0, step:0, facing:1 };
+var player = {
+  x: 16,
+  y: GROUND_Y,
+  vx: 0,
+  vy: 0,
+  step: 0,
+  facing: 1,
+  grounded: true,
+  coyote: 0,          // timer
+  jumpBuffer: 0       // timer
+};
 
 /* Parallax */
 var parallax = { cloudsNearX:0, cloudsFarX:0, treeX:0 };
@@ -341,8 +357,16 @@ function loadImage(url){
 }
 
 function loadPlayerSprites(){
-  // base path to your player folders
   var base = "./SocialBurstRandomizer/sprites/player/";
+
+  function loadImage(url){
+    return new Promise(function(resolve){
+      var img = new Image();
+      img.onload = function(){ resolve(img); };
+      img.onerror = function(){ console.warn("Missing sprite:", url); resolve(null); };
+      img.src = url;
+    });
+  }
 
   var idlePromises = PLAYER_SPR.idle.frames.map(function(f){
     return loadImage(base + PLAYER_SPR.idle.dir + "/" + f);
@@ -350,17 +374,25 @@ function loadPlayerSprites(){
   var walkPromises = PLAYER_SPR.walk.frames.map(function(f){
     return loadImage(base + PLAYER_SPR.walk.dir + "/" + f);
   });
+  var jumpPromises = PLAYER_SPR.jump.frames.map(function(f){
+    return loadImage(base + PLAYER_SPR.jump.dir + "/" + f);
+  });
 
-  return Promise.all([ Promise.all(idlePromises), Promise.all(walkPromises) ])
-    .then(function(res){
-      playerGfx.idleFrames = res[0];
-      playerGfx.walkFrames = res[1];
-      playerGfx.ready = true;
-    })
-    .catch(function(err){
-      console.warn("Player sprite load failed:", err);
-      playerGfx.ready = false; // engine will fall back to the pixel block
-    });
+  return Promise.all([
+    Promise.all(idlePromises),
+    Promise.all(walkPromises),
+    Promise.all(jumpPromises)
+  ])
+  .then(function(res){
+    playerGfx.idleFrames = res[0].filter(Boolean);
+    playerGfx.walkFrames = res[1].filter(Boolean);
+    playerGfx.jumpFrames = res[2].filter(Boolean);
+    playerGfx.ready = !!(playerGfx.idleFrames.length && playerGfx.walkFrames.length && playerGfx.jumpFrames.length);
+  })
+  .catch(function(err){
+    console.warn("Player sprite load failed:", err);
+    playerGfx.ready = false;
+  });
 }
 /* ================= BOOT ================= */
 window.addEventListener('DOMContentLoaded', function(){
@@ -399,7 +431,10 @@ function wireUI(){
   dUp.addEventListener('click', function(e){ e.preventDefault(); tryEnter(); });
 /* PATCH END */
 
-  btnA.onclick=function(){ if (canEnterId){ var it=getById(canEnterId); if(it) openDetails(it);} };
+  btnA.onclick=function(e){
+  e.preventDefault();
+  requestJump();
+};
   btnB.onclick=function(){ if (currentOpen) saveItem(currentOpen); };
 
   /* PATCH START: keyboard -> keys state */
@@ -412,6 +447,17 @@ function wireUI(){
     if (e.key==='ArrowLeft' || e.key==='a' || e.key==='A') keys.left = true;
     if (e.key==='ArrowRight'|| e.key==='d' || e.key==='D') keys.right= true;
     if (e.key==='ArrowUp'   || e.key==='w' || e.key==='W' || e.key==='Enter') keys.up=true;
+
+// === ADD: Jump controls ===
+if (e.code === 'Space') {
+  e.preventDefault();
+  requestJump();
+}
+if (e.key === 'z' || e.key === 'Z') {
+  requestJump();
+}
+// === END ADD ===
+
 
     // Tweak mode (unchanged)
     if (e.key==='t' || e.key==='T'){ tweak.on=!tweak.on; document.querySelector('.screen-inner').classList.toggle('tweak-on', tweak.on); }
@@ -605,37 +651,91 @@ function loop(){
   var dt  = Math.min(0.05, (now - _lastT) / 1000); // clamp 50ms
   _lastT = now;
 
+function requestJump(){
+  // buffer the intent; update() will consume it if possible
+  player.jumpBuffer = PHYS.jumpBuffer;
+}
+
+function doJump(){
+  player.vy = -PHYS.jumpVel;
+  player.grounded = false;
+  player.coyote = 0;
+  anim.state = "jump";
+  anim.playedJumpOnce = false; // let the jump animation play from start
+}
+
   update(dt);
   render();
   requestAnimationFrame(loop);
 }
 
-/* PATCH START: instant walk update (no accel/decel) */
 function update(dt){
-  // decide desired velocity from keys
+  // --- HORIZONTAL (unchanged feel) ---
   var want = 0;
   if (keys.left && !keys.right)  want = -PHYS.walkSpeed;
   else if (keys.right && !keys.left) want =  PHYS.walkSpeed;
 
-  // apply instantly
   player.vx = want;
   if (player.vx !== 0) player.facing = (player.vx > 0 ? 1 : -1);
-
-  // integrate position
   player.x += player.vx * dt;
 
-  // bounds
   if (player.x < 0) player.x = 0;
   if (player.x > worldW - 8) player.x = worldW - 8;
 
-  // animation state & clock
-  anim.state = (player.vx !== 0) ? "walk" : "idle";
+  // --- COYOTE & BUFFER TIMERS ---
+  if (!player.grounded){
+    player.coyote = Math.max(0, player.coyote - dt);
+  } else {
+    player.coyote = PHYS.coyoteTime;
+  }
+  if (player.jumpBuffer > 0) {
+    player.jumpBuffer = Math.max(0, player.jumpBuffer - dt);
+  }
+
+  // --- VERTICAL PHYSICS ---
+  if (!player.grounded){
+    player.vy += PHYS.gravity * dt;
+    if (player.vy > PHYS.termVel) player.vy = PHYS.termVel;
+  }
+
+  player.y += player.vy * dt;
+
+  // ground collision at GROUND_Y
+  if (player.y >= GROUND_Y){
+    player.y = GROUND_Y;
+    player.vy = 0;
+    if (!player.grounded){
+      player.grounded = true;
+      // if a jump was buffered just before landing, consume it now
+      if (player.jumpBuffer > 0){
+        player.jumpBuffer = 0;
+        doJump();
+        player.grounded = false;
+      }
+    }
+  } else {
+    player.grounded = false;
+  }
+
+  // --- CONSUME JUMP BUFFER while airborne but within coyote time (leaving edges)
+  if (player.jumpBuffer > 0 && (player.grounded || player.coyote > 0)){
+    player.jumpBuffer = 0;
+    doJump();
+  }
+
+  // --- ANIMATION STATE ---
+  if (!player.grounded){
+    // rising vs falling
+    anim.state = (player.vy < 0) ? "jump" : "fall";
+  } else {
+    anim.state = (player.vx !== 0) ? "walk" : "idle";
+  }
   anim.t += dt;
 
-  // simple walk animation (on/off)
+  // simple legacy step (used by pixel fallback)
   if (player.vx !== 0) { player.step = (player.step + 10*dt) % 2; } else { player.step = 0; }
 
-  // camera with deadzone (keeps your existing feel)
+  // --- CAMERA ---
   var leftDZ  = (player.x - PHYS.deadzone) - canvas.width/2;
   var rightDZ = (player.x + PHYS.deadzone) - canvas.width/2;
   if (cameraX > leftDZ)  cameraX = Math.max(leftDZ, cameraX - 120*dt);
@@ -643,24 +743,25 @@ function update(dt){
   if (cameraX < 0) cameraX = 0;
   if (cameraX > worldW - canvas.width) cameraX = worldW - canvas.width;
 
-  // parallax scroll (time based)
+  // --- PARALLAX ---
   parallax.cloudsNearX += 20*dt;
   parallax.cloudsFarX  -= 10*dt;
   parallax.treeX = cameraX * 0.5;
 
-  // enter detection near the door
+  // --- ENTER detection unchanged ---
   var aligned = null;
   for (var i=0;i<houses.length;i++){
     var door = doorXFor(houses[i]);
     if (Math.abs(door - player.x) < 8){ aligned = houses[i]; break; }
   }
-  if (aligned){ canEnterId = aligned.id; hintEl.classList.add('show'); }
-  else { canEnterId = null; hintEl.classList.remove('show'); }
+  if (aligned && player.grounded){ // only show hint when on ground
+    canEnterId = aligned.id; hintEl.classList.add('show');
+  } else {
+    canEnterId = null; hintEl.classList.remove('show');
+  }
 
-  // tap up/enter to go in
   if (keys.up && canEnterId){ tryEnter(); keys.up = false; }
 }
-/* PATCH END */
 
 /* ================= RENDER ================= */
 function render(){
@@ -766,34 +867,38 @@ function drawPlayer(x, y){
   // shadow
   fillRect(x-3, y, 8, 1, 0x2b1b30);
 
-  // if tilesheet index was used earlier, keep supporting it
+  // tilesheet fallback if PNGs not ready
   if (typeof map.player === 'number' && !playerGfx.ready){
     drawTileIndex(map.player, x-4, y-16);
     return;
   }
 
-  // use PNG frames if loaded
   if (playerGfx.ready){
-    var frames, fps;
+    var frames, fps, idx;
+
     if (anim.state === "walk"){
       frames = playerGfx.walkFrames; fps = PLAYER_SPR.walk.fps;
-    } else {
+      idx = Math.floor(anim.t * fps) % frames.length;
+    } else if (anim.state === "idle"){
       frames = playerGfx.idleFrames; fps = PLAYER_SPR.idle.fps;
+      idx = Math.floor(anim.t * fps) % frames.length;
+    } else {
+      // jump/fall: play jump strip once on takeoff, then hold last frame while airborne
+      frames = playerGfx.jumpFrames; fps = PLAYER_SPR.jump.fps;
+      var jumpProgress = Math.min(frames.length - 1, Math.floor(anim.t * fps));
+      idx = (player.vy < 0) ? jumpProgress : (frames.length - 1); // rising anim, falling hold last
     }
-    if (frames && frames.length){
-      var i = Math.floor(anim.t * fps) % frames.length;
-      var img = frames[i];
-      var scale = PLAYER_SPR.scale || 1;
 
+    if (frames && frames.length){
+      var img = frames[idx] || frames[frames.length - 1];
+      var scale = PLAYER_SPR.scale || 1;
       var w = Math.round(img.width  * scale);
       var h = Math.round(img.height * scale);
 
-      // draw with left/right flip
       if (player.facing < 0){
         ctx.save();
         ctx.translate(x, y);
         ctx.scale(-1, 1);
-        // anchor: sprite bottom center at (x,y)
         ctx.drawImage(img, -Math.floor(w/2), -h, w, h);
         ctx.restore();
       } else {
@@ -803,8 +908,8 @@ function drawPlayer(x, y){
     }
   }
 
-  // FALLBACK: tiny pixel dude (if frames not ready)
-  var wob = (player.vx!==0 ? ( ( (anim.t*10)|0 ) % 2 ) : 0) * (player.facing>0?1:-1);
+  // FINAL FALLBACK: tiny pixel dude
+  var wob = (player.vx!==0 ? (((anim.t*10)|0) % 2) : 0) * (player.facing>0?1:-1);
   fillRect(x-2, y-14, 6, 5, 0xf2c199); // head
   fillRect(x-3, y-9,  8, 6, 0x6332c8); // body
   fillRect(x-3+wob, y-3, 3, 3, 0x222222);
