@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
-<title>SocialBurst — Game Boy Explorer</title>
+<title>SocialBurst — Game Boy Explorer (Pixel Scene)</title>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 
-<!-- Fonts from your project (paths unchanged) -->
+<!-- Brand fonts (paths from your repo) -->
 <style>
   @font-face {
     font-family: "BrotherBold";
@@ -33,7 +33,6 @@
     --shell-dark:#4f22a8;
     --shell-light:#8d5bf0;
 
-    --radius:22px;
     --shadow:0 18px 40px rgba(0,0,0,.28);
   }
 
@@ -228,10 +227,10 @@
 </aside>
 
 <script>
-/* ===== CONFIG ===== */
+/* ================= CONFIG ================= */
 var CSV_URL = "https://docs.google.com/spreadsheets/d/<SHEET_ID>/pub?gid=<GID_TODAY>&single=true&output=csv";
 
-/* ===== ELEMENTS ===== */
+/* ================= ELEMENTS ================= */
 var canvas = document.getElementById('screen');
 var ctx = canvas.getContext('2d'); ctx.imageSmoothingEnabled = false;
 var hintEl = document.getElementById('hint');
@@ -264,18 +263,24 @@ var modalIcs = document.getElementById('modal-ics');
 var modalClose = document.getElementById('modal-close');
 var modalSave = document.getElementById('modal-save');
 
-/* ===== STATE ===== */
+/* ================= STATE ================= */
 var CATEGORY = 'events';
 var EVENTS=[], DEALS=[], ITEMS=[];
-var houses=[]; // {id,title,when,x,w,h,variant,winRows,winCols,seed}
-var player = { x: 12, y: 120, vx:0, step:0 };
+var tiles=[];     // background tree silhouette points
+var houses=[];    // buildings for items
+var fences=[];    // fence segments between houses
+var player = { x: 16, y: 120, vx:0, step:0, facing:1 };
 var speed = 1.6;
 var worldW = 256*6;
 var cameraX = 0;
 var canEnterId = null;
 var currentOpen = null;
 
-/* ===== BOOT ===== */
+/* constants for tile-ish look */
+var TILE = 16;
+var GROUND_Y = 120;
+
+/* ================= BOOT ================= */
 window.addEventListener('DOMContentLoaded', function(){
   wireUI();
   hydrate().then(function(){
@@ -284,6 +289,7 @@ window.addEventListener('DOMContentLoaded', function(){
     requestAnimationFrame(loop);
   });
 });
+
 function wireUI(){
   tabEvents.onclick=function(){ setCategory('events'); };
   tabDeals.onclick=function(){ setCategory('deals'); };
@@ -301,8 +307,8 @@ function wireUI(){
       if (e.key==='b'||e.key==='B'){ if(currentOpen) saveItem(currentOpen); }
       return;
     }
-    if (e.key==='ArrowLeft'){ player.vx=-speed; }
-    if (e.key==='ArrowRight'){ player.vx= speed; }
+    if (e.key==='ArrowLeft'){ player.vx=-speed; player.facing=-1; }
+    if (e.key==='ArrowRight'){ player.vx= speed; player.facing= 1; }
     if (e.key==='ArrowUp' || e.key==='Enter') tryEnter();
     if (e.key==='a'||e.key==='A'){ if (canEnterId){ var it=findById(canEnterId); if(it) openDetails(it);} }
     if (e.key==='b'||e.key==='B'){ if (currentOpen) saveItem(currentOpen); }
@@ -320,7 +326,7 @@ function wireUI(){
   modalSave.onclick=function(){ if (currentOpen) saveItem(currentOpen); };
 }
 
-/* ===== DATA ===== */
+/* ================= DATA ================= */
 function hydrate(){
   return fetch(CSV_URL, {cache:'no-store'})
     .then(function(r){ if(!r.ok) throw new Error(r.status); return r.text(); })
@@ -377,7 +383,8 @@ function normalize(obj, idx){
     else if(s) when='Today '+sTxt;
     else if(e) when='Until '+eTxt+' today';
   }
-  return { id:hashId(title+'|'+venue+'|'+when+'|'+idx), type:type, title:title, venue:venue||'', when:when||'Today',
+  return { id: hashId(title+'|'+venue+'|'+when+'|'+idx),
+           type:type, title:title, venue:venue||'', when:when||'Today',
            description:desc||'', short:'', link:link||undefined, address:addr||undefined, phone:phone||undefined };
 }
 function parseTime(s){
@@ -407,7 +414,7 @@ function fallback(){
   };
 }
 
-/* ===== WORLD ===== */
+/* ================= WORLD GEN ================= */
 function setCategory(kind){
   CATEGORY=(kind==='deals')?'deals':'events';
   tabEvents.setAttribute('aria-pressed', String(CATEGORY==='events'));
@@ -416,36 +423,65 @@ function setCategory(kind){
   tabDeals.setAttribute('aria-selected',  String(CATEGORY==='deals'));
 
   ITEMS=(CATEGORY==='events'?EVENTS:DEALS).slice();
+  buildScene();
+  player.x=16; cameraX=0; canEnterId=null;
+}
+
+function buildScene(){
   buildHouses();
-  player.x=12; cameraX=0; canEnterId=null;
+  buildFences();
+  buildParallax();
 }
 
 function buildHouses(){
   houses=[];
-  var x=40, gap=110, list=(CATEGORY==='events'?EVENTS:DEALS);
+  var x=40, gap=120, list=(CATEGORY==='events'?EVENTS:DEALS);
   for(var i=0;i<list.length;i++){
     var it=list[i];
-    var seed=hashId(it.id).length + i*13;
-    var variant=['wood','stone','modern'][rndi(seed,0,2)];
-    var w=rndi(seed+7, 26, 44);               // width variety
-    var h=rndi(seed+11, 16, 34);              // HEIGHT VARIETY
-    var winRows=rndi(seed+23, 0, 2);
-    var winCols=rndi(seed+29, 1, 3);
-    houses.push({ id:it.id, title:it.title, when:it.when, x:x, w:w, h:h, variant:variant, seed:seed, winRows:winRows, winCols:winCols });
-    x += gap + rndi(seed+3, -10, 18);
+    var seed=hashId(it.id).length + i*37;
+    var kind = ['cabin','cottage','windmill'][randInt(seed,0,2)];
+    var w = randInt(seed+7, 30, 46);
+    var h = randInt(seed+11, 22, 38);      // varied heights
+    var winRows=randInt(seed+23, 1, 2);
+    var winCols=randInt(seed+29, 1, 3);
+    houses.push({ id:it.id, title:it.title, when:it.when, x:x, w:w, h:h, kind:kind, seed:seed, winRows:winRows, winCols:winCols });
+    x += gap + randInt(seed+3, -12, 22);
   }
-  worldW=Math.max(256, (houses.length? houses[houses.length-1].x+120:256));
+  worldW=Math.max(256, (houses.length? houses[houses.length-1].x+140:256));
 }
 
-/* ===== GAME LOOP ===== */
+function buildFences(){
+  fences=[];
+  for(var i=0;i<houses.length-1;i++){
+    var left=houses[i], right=houses[i+1];
+    var segStart = left.x + Math.floor(left.w/2) + 12;
+    var segEnd   = right.x - Math.floor(right.w/2) - 12;
+    for (var x=segStart; x<segEnd; x+=TILE){
+      fences.push({x:x});
+    }
+  }
+}
+
+function buildParallax(){
+  // background pine silhouettes positions (simple triangles)
+  tiles=[];
+  var step=28;
+  for (var x=0; x<worldW; x+=step){
+    var height = randInt(x+13, 18, 30);
+    var offset = randInt(x+7, -4, 6);
+    tiles.push({x:x+offset, h:height});
+  }
+}
+
+/* ================= GAME LOOP ================= */
 function loop(){
   update();
   render();
   requestAnimationFrame(loop);
 }
+
 function update(){
-  // movement + simple footstep anim
-  if (player.vx!==0){ player.step = (player.step+1)%16; }
+  if (player.vx!==0){ player.step=(player.step+1)%16; }
   player.x += player.vx;
   if (player.x<0) player.x=0;
   if (player.x>worldW-1) player.x=worldW-1;
@@ -464,133 +500,221 @@ function update(){
   else { canEnterId=null; hintEl.classList.remove('show'); }
 }
 
-/* ===== RENDER ===== */
+/* ================= RENDER ================= */
 function render(){
-  // SKY gradient (blue)
-  var top=0xCFEAFF, mid=0xA9D8FF, bot=0x8CC7FF;
-  for(var y=0;y<120;y++){
-    var t=y/120, hex=(t<0.5)?lerpRGB(top,mid,t/0.5):lerpRGB(mid,bot,(t-0.5)/0.5);
+  // SKY gradient
+  var top=0xBDE4FF, mid=0x8CC9FF, bot=0x6BB1F4;
+  for(var y=0;y<GROUND_Y;y++){
+    var t=y/GROUND_Y, hex=(t<0.5)?lerpRGB(top,mid,t/0.5):lerpRGB(mid,bot,(t-0.5)/0.5);
     horizLine(0,y,canvas.width,hex);
   }
 
-  // CLOUDS (animated left -> right & right -> left layers)
-  var time = Date.now();
-  drawCloudLayer(0.03, 0, time);
-  drawCloudLayer(-0.02, 10, time); // parallax opposite direction
+  // CLOUDS parallax (two layers, different speeds)
+  var t=Date.now();
+  drawCloudLayer( 0.035, 10, t, 0);  // near
+  drawCloudLayer(-0.020, 20, t, 50); // far
 
-  // GRASS ground
-  var grass=0x76C86A, stripe=0x5EAF55;
-  fillRect(0,120,canvas.width,40,grass);
-  for (var gy=120; gy<160; gy+=2) horizLine(0,gy,canvas.width,(gy%4===0)?stripe:grass);
+  // BACKGROUND PINES (parallax slower than ground)
+  var parX = Math.floor(cameraX*0.5);
+  for (var i=0;i<tiles.length;i++){
+    var px = tiles[i].x - parX;
+    drawPine(px, GROUND_Y-30, tiles[i].h);
+  }
+
+  // GROUND: grass top + flowers + dirt with stones (tile-ish)
+  drawGround();
+
+  // FENCES between houses
+  for (var f=0; f<fences.length; f++){
+    var fx = fences[f].x - cameraX;
+    drawFence(fx, GROUND_Y-10);
+  }
 
   // HOUSES
-  for(var i=0;i<houses.length;i++) drawHouseVar(houses[i], cameraX);
+  for (var h=0; h<houses.length; h++){
+    drawBuilding(houses[h], cameraX);
+  }
 
-  // PLAYER (visible + purple shirt)
-  drawPlayer(Math.round(player.x - cameraX), Math.round(player.y), player.step);
+  // PLAYER
+  drawPlayer(Math.round(player.x - cameraX), Math.round(player.y), player.step, player.facing);
 }
 
-/* ===== CLOUDS ===== */
-function drawCloudLayer(speed, yOffset, time){
-  for (var i=0;i<10;i++){
-    var scale = 0.8 + (i%3)*0.35;
-    var cx = ((i*76) + (time*speed)) % (canvas.width+120);
-    if (cx< -60) cx += (canvas.width+120);
-    var cy = 10 + yOffset + (i%4)*18;
-    pixelCloud(cx-60, cy, scale);
+/* --------- Pixel building blocks (procedural) --------- */
+function drawCloudLayer(speed, yBase, time, seed){
+  var span = canvas.width + 200;
+  for (var i=0; i<8; i++){
+    var scale = 1 + (i%3)*0.4;
+    var cx = ((i*90 + seed) + (time*speed)) % span;
+    if (cx < -100) cx += span;
+    var cy = yBase + (i%4)*12;
+    pixelCloud(cx-100, cy, scale);
   }
 }
 function pixelCloud(cx, cy, s){
-  var w=Math.max(2, Math.floor(6*s)), h=Math.max(2, Math.floor(3*s));
+  var w=Math.max(8, Math.floor(18*s)), h=Math.max(6, Math.floor(8*s));
   for(var y=0;y<h;y++){
     for(var x=0;x<w;x++){
+      // soft blobby shape
       var edge=(x===0||y===0||x===w-1||y===h-1);
-      var color=edge?0xEDEDED:0xFFFFFF;
+      var color=edge?0xE3F2FF:0xFFFFFF;
       putPixel((cx+x)|0, (cy+y)|0, color);
     }
   }
 }
 
-/* ===== HOUSES ===== */
-var HOUSE_PALETTE={
-  wood:{ wall:0xC98F5A, plankDark:0xB17846, roof:0x6B4A2E, door:0x3F2B1B, win:0xFFF3A3, frame:0x4B3A23, beam:0x744C2D },
-  stone:{ wall:0xD6D6D6, plankDark:0xBEBEBE, roof:0x5E6E7B, door:0x394653, win:0xDDF1FF, frame:0x2E3B45, beam:0x4A5A66 },
-  modern:{ wall:0xFFFFFF, plankDark:0xEDEDED, roof:0x567D2C, door:0x2D1C4A, win:0xCFE8FF, frame:0x2D1C4A, beam:0x2D1C4A }
-};
-function drawHouseVar(h, camX){
-  var baseX=h.x - camX, groundY=120, w=h.w, hh=h.h;
-  var x=baseX - Math.floor(w/2), y=groundY - hh;
-  var pal=HOUSE_PALETTE[h.variant]||HOUSE_PALETTE.wood;
-
-  // body
-  fillRect(x, y, w, hh, pal.wall);
-
-  // wood/stone texture
-  if (h.variant==='wood'){
-    var phase=((Date.now()/500)|0)%2;
-    for (var py=0; py<hh; py+=3) horizLine(x, y+py+phase, w, pal.plankDark);
-    // simple porch for some
-    if ((h.seed%3)===0){
-      // posts
-      fillRect(x-6, y+hh-10, 2, 10, pal.beam);
-      fillRect(x-2, y+hh-10, 2, 10, pal.beam);
-      // roof beam
-      horizLine(x-8, y+hh-10, 10, pal.beam);
-    }
-  } else if (h.variant==='stone'){
-    for (var ry=0; ry<hh; ry+=4){
-      var offset=(ry%8===0)?0:2;
-      for (var rx=0; rx<w; rx+=6) fillRect(x+rx+offset, y+ry, 4, 3, pal.plankDark);
-    }
-  }
-
-  // roof triangle
-  tri(x-2, y, x+w+2, y, x+Math.floor(w/2), y- Math.max(8,(w/3)|0), pal.roof);
-
-  // door
-  var dW=Math.max(6,(w/6)|0), dH=Math.max(10,(hh/2)|0);
-  fillRect(x+Math.floor(w/2)-Math.floor(dW/2), y+hh-dH, dW, dH, pal.door);
-
-  // windows (rows/cols vary)
-  var winGapX=Math.max(3,(w/(h.winCols+1))|0), winGapY=Math.max(5,(hh/(h.winRows+3))|0);
-  var winW=Math.max(4,(w/8)|0), winH=Math.max(4,(hh/6)|0);
-  var flick=((Date.now()/700)|0)%2;
-  for (var r=0;r<h.winRows;r++){
-    for (var c=0;c<h.winCols;c++){
-      var wx=x+winGapX*(c+1)-Math.floor(winW/2);
-      var wy=y+winGapY*(r+1);
-      var lit=((r+c+flick+h.seed)%2===0);
-      var winColor=lit?pal.win:0xAAC7E0;
-      fillRect(wx,wy,winW,winH,winColor);
-      // frame & mullions
-      horizLine(wx-1,wy-1,winW+2,pal.frame);
-      horizLine(wx-1,wy+winH,winW+2,pal.frame);
-      fillRect(wx-1,wy-1,1,winH+2,pal.frame);
-      fillRect(wx+winW,wy-1,1,winH+2,pal.frame);
-      fillRect(wx+Math.floor(winW/2),wy,1,winH,pal.frame);
-      horizLine(wx,wy+Math.floor(winH/2),winW,pal.frame);
-    }
-  }
-
-  // title on roof
-  pixelText(h.title.toUpperCase(), x, y-12, 0x0E390E, Math.min(w, 52));
+function drawPine(x, baseY, h){
+  var color1=0x5FA165, color2=0x3F7E4A;
+  // trunk
+  fillRect(x-1, baseY-4, 3, 6, 0x5B3A1E);
+  // foliage triangles (3 layers)
+  tri(x-10, baseY-h+14, x+10, baseY-h+14, x, baseY-h, color1);
+  tri(x-12, baseY-h+22, x+12, baseY-h+22, x, baseY-h+8, color2);
+  tri(x-14, baseY-h+30, x+14, baseY-h+30, x, baseY-h+16, color1);
 }
 
-/* ===== PLAYER (always visible) ===== */
-function drawPlayer(x,y,step){
-  // outline
-  fillRect(x-3, y-14, 10, 14, 0x000000); // shadow box (simple outline)
+function drawGround(){
+  // grass cap
+  var grass1=0x6AD26A, grass2=0x49B34D, flower1=0xFFD4E6, flower2=0xFFE38F;
+  fillRect(0,GROUND_Y-8,canvas.width,8,grass1);
+  for (var x=0; x<canvas.width; x+=2){
+    putPixel(x, GROUND_Y-8, grass2);
+    if ((x+Math.floor(cameraX))%37===0) { // flowers
+      putPixel(x, GROUND_Y-9, flower1);
+      putPixel(x+1, GROUND_Y-8, flower2);
+    }
+  }
+  // dirt body with pebbles
+  var soil=0x5A3A65, soil2=0x4E2E57, rock1=0x7B5B89, rock2=0x3E2149;
+  for (var y=GROUND_Y; y<canvas.height; y++){
+    var shade = (y%2===0)?soil:soil2;
+    horizLine(0,y,canvas.width, shade);
+    // stones
+    if (y%6===0){
+      for (var sx=((y*13)%11); sx<canvas.width; sx+=TILE){
+        putPixel(sx, y, (y%12===0)?rock1:rock2);
+        putPixel(sx+1, y, rock1);
+      }
+    }
+  }
+}
+
+function drawFence(x, y){
+  // posts
+  fillRect(x, y-8, 2, 10, 0x7B562E);
+  // rail
+  horizLine(x-6, y-4, 12, 0x936F43);
+  horizLine(x-6, y-2, 12, 0x936F43);
+}
+
+function drawBuilding(h, camX){
+  var baseX=h.x - camX;
+  var w=h.w, hh=h.h;
+  var x=baseX - Math.floor(w/2);
+  var y=GROUND_Y - hh;
+
+  if (h.kind==='windmill'){
+    drawWindmill(x,y,w,hh,h.title);
+    return;
+  }
+
+  // shared cabin/cottage walls
+  var wall=0xD19A64, plank=0xB87F48, roof=0x7B4E2C, roofDark=0x6B4226, door=0x3F2B1B, frame=0x4B3A23, windowOn=0xFFF3A3, windowOff=0xAAC7E0;
+
+  if (h.kind==='cottage'){ wall=0xE0D6C2; plank=0xC9B79B; roof=0x5E6E7B; roofDark=0x4C5A66; door=0x394653; frame=0x2E3B45; }
+
+  // walls + plank lines
+  fillRect(x, y, w, hh, wall);
+  var phase=((Date.now()/500)|0)%2;
+  for (var py=2; py<hh; py+=3) horizLine(x+1, y+py+phase, w-2, plank);
+
+  // roof
+  tri(x-2, y+2, x+w+2, y+2, x+Math.floor(w/2), y - Math.max(10,(w/3)|0), roof);
+  // roof shading edge
+  horizLine(x-2, y+2, w+4, roofDark);
+
+  // porch (sometimes)
+  if ((h.seed%3)===0){
+    // posts
+    fillRect(x-6, y+hh-10, 2, 10, frame);
+    fillRect(x-2, y+hh-10, 2, 10, frame);
+    // beam
+    horizLine(x-8, y+hh-10, 10, frame);
+  }
+
+  // door
+  var dW=Math.max(6,(w/6)|0), dH=Math.max(12,(hh/2)|0);
+  fillRect(x+Math.floor(w/2)-Math.floor(dW/2), y+hh-dH, dW, dH, door);
+
+  // windows grid
+  var rows=h.winRows, cols=h.winCols;
+  var gapX=Math.max(4,(w/(cols+1))|0), gapY=Math.max(6,(hh/(rows+3))|0);
+  var winW=Math.max(5,(w/8)|0), winH=Math.max(5,(hh/6)|0);
+  var flick=((Date.now()/700)|0)%2;
+  for (var r=0;r<rows;r++){
+    for (var c=0;c<cols;c++){
+      var wx=x + gapX*(c+1) - Math.floor(winW/2);
+      var wy=y + gapY*(r+1);
+      var lit=((r+c+flick+h.seed)%2===0);
+      var pane= lit?windowOn:windowOff;
+      fillRect(wx,wy,winW,winH,pane);
+      // frame + mullions
+      horizLine(wx-1,wy-1,winW+2,frame);
+      horizLine(wx-1,wy+winH,winW+2,frame);
+      fillRect(wx-1,wy-1,1,winH+2,frame);
+      fillRect(wx+winW,wy-1,1,winH+2,frame);
+      fillRect(wx+Math.floor(winW/2), wy, 1, winH, frame);
+      horizLine(wx, wy+Math.floor(winH/2), winW, frame);
+    }
+  }
+
+  // label on roof
+  pixelText(h.title.toUpperCase(), x, y - 12, 0x143C0D, Math.min(w, 60));
+}
+
+function drawWindmill(x,y,w,h,title){
+  var body=0xD6C4A7, roof=0x6B4E3A, dark=0x4E3A2A, door=0x3B2A1C, frame=0x2D1C12;
+  fillRect(x, y, w, h, body);
+  // roof
+  tri(x-2, y+2, x+w+2, y+2, x+Math.floor(w/2), y - Math.max(10,(w/3)|0), roof);
+  // door
+  var dW=Math.max(6,(w/5)|0), dH=Math.max(12,(h/2)|0);
+  fillRect(x+Math.floor(w/2)-Math.floor(dW/2), y+h-dH, dW, dH, door);
+  // blades pivot
+  var cx=x+Math.floor(w/2), cy=y+Math.floor(h/3);
+  fillRect(cx-1, cy-1, 2, 2, dark);
+  // spinning blades
+  var rot=(Date.now()/200)% (Math.PI*2);
+  drawBlade(cx,cy, rot,        14, frame);
+  drawBlade(cx,cy, rot+Math.PI/2, 14, frame);
+
+  // label
+  pixelText(title.toUpperCase(), x, y - 12, 0x143C0D, Math.min(w, 60));
+}
+function drawBlade(cx,cy,angle,len,color){
+  // simple cross blade with “pixels”
+  for (var i=-len; i<=len; i++){
+    var px = cx + Math.round(Math.cos(angle)*i);
+    var py = cy + Math.round(Math.sin(angle)*i);
+    putPixel(px,py,color);
+    if (i%2===0){ putPixel(px+1,py,color); }
+  }
+}
+
+/* --------- Player --------- */
+function drawPlayer(x,y,step,facing){
+  // shadow
+  fillRect(x-2, y, 6, 1, 0x2b1b30);
   // head
-  fillRect(x-1, y-12, 6, 4, 0xf2c199);
-  // body (brand purple)
-  fillRect(x-2, y-8, 8, 6, 0x6332c8);
-  // legs with tiny walk cycle
-  var alt = (step<8)?0:1;
+  fillRect(x, y-12, 4, 4, 0xf2c199);
+  // body (SocialBurst purple)
+  fillRect(x-1, y-8, 6, 6, 0x6332c8);
+  // legs with tiny walk
+  var alt = (step<8)?0:1; if (facing<0) alt=-alt;
   fillRect(x-1-alt, y-2, 2, 2, 0x000000);
   fillRect(x+2+alt, y-2, 2, 2, 0x000000);
 }
 
-/* ===== ENTER / MODAL ===== */
+/* --------- ENTER / MODAL --------- */
 function tryEnter(){
   if(!canEnterId) return;
   var it=findById(canEnterId); if(!it) return;
@@ -616,7 +740,7 @@ function openDetails(item){
 }
 function closeModal(){ modalBackdrop.style.display='none'; }
 
-/* ===== SAVED ===== */
+/* --------- SAVED --------- */
 function getSaved(){ try{ return JSON.parse(localStorage.getItem('sb_saved')||'[]'); }catch(e){ return []; } }
 function setSaved(arr){ localStorage.setItem('sb_saved', JSON.stringify(arr)); }
 function updateSavedBadge(){ savedCountEl.textContent=String(getSaved().length); }
@@ -649,7 +773,7 @@ function setSavedPanel(open){
   else    { savedPanel.classList.remove('open'); btnSaved.setAttribute('aria-expanded','false'); savedPanel.setAttribute('aria-hidden','true'); }
 }
 
-/* ===== ICS ===== */
+/* --------- ICS --------- */
 function makeIcs(item){
   var now=new Date();
   var start=parseWhen(item.when)||new Date(now.getFullYear(),now.getMonth(),now.getDate(),19,0,0);
@@ -665,7 +789,7 @@ function makeIcs(item){
 function parseWhen(str){ var m=String(str||'').toLowerCase().match(/today\s+(\d{1,2}):(\d{2})/); if(!m) return null; var h=+m[1],mi=+m[2]; var n=new Date(); return new Date(n.getFullYear(),n.getMonth(),n.getDate(),h,mi,0,0); }
 function esc(s){ return String(s).replace(/([,;])/g,'\\$1').replace(/\n/g,'\\n'); }
 
-/* ===== DRAW HELPERS ===== */
+/* --------- LOW-LEVEL PIXEL HELPERS --------- */
 function putPixel(x,y,hex){ ctx.fillStyle='#'+hex.toString(16).padStart(6,'0'); ctx.fillRect(x|0,y|0,1,1); }
 function fillRect(x,y,w,h,hex){ ctx.fillStyle='#'+hex.toString(16).padStart(6,'0'); ctx.fillRect(x|0,y|0,w|0,h|0); }
 function horizLine(x,y,len,hex){ fillRect(x,y,len,1,hex); }
@@ -677,7 +801,7 @@ function lerpRGB(a,b,t){
   return (rr<<16)|(gg<<8)|bb2;
 }
 
-/* Pixel text 3x5 */
+/* --------- Pixel text 3x5 --------- */
 var FONT={
   A:["010","101","111","101","101"],B:["110","101","110","101","110"],C:["011","100","100","100","011"],
   D:["110","101","101","101","110"],E:["111","100","110","100","111"],F:["111","100","110","100","100"],
@@ -691,16 +815,18 @@ var FONT={
 };
 function pixelText(s,x,y,color,maxWidth){
   var px=x, w=4, chars=Math.min(Math.floor((maxWidth||1000)/w), s.length);
+  s=s.toUpperCase();
   for(var i=0;i<chars;i++){
     var g=FONT[s[i]]||FONT[" "]; for(var r=0;r<5;r++){ var row=g[r]; for(var c=0;c<3;c++) if(row[c]==='1') putPixel(px+c, y+r, color); }
     px+=w;
   }
 }
 
-/* ===== UTILS ===== */
+/* --------- UTILS --------- */
 function hashId(s){ var h=0; for(var i=0;i<s.length;i++){ h=((h<<5)-h)+s.charCodeAt(i); h|=0; } return 'sb_'+Math.abs(h); }
-function rndi(seed,min,max){ var x=Math.sin(seed)*10000; var v=x - Math.floor(x); return Math.floor(v*(max-min+1))+min; }
-function nudge(dir){ player.vx=dir*speed; setTimeout(function(){ if((dir<0 && player.vx<0)||(dir>0 && player.vx>0)) player.vx=0; },120); }
+function rand01(seed){ var x=Math.sin(seed)*10000; return x - Math.floor(x); }
+function randInt(seed,min,max){ return Math.floor(rand01(seed)*(max-min+1))+min; }
+function nudge(dir){ player.vx=dir*speed; player.facing=(dir<0?-1:1); setTimeout(function(){ if((dir<0 && player.vx<0)||(dir>0 && player.vx>0)) player.vx=0; },120); }
 </script>
 </body>
 </html>
