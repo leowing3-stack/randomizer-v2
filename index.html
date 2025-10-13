@@ -238,14 +238,11 @@
 /* ================= BASIC CONFIG ================= */
 var CSV_URL = "https://docs.google.com/spreadsheets/d/<SHEET_ID>/pub?gid=<GID_TODAY>&single=true&output=csv";
 var TILE = 16, GROUND_Y = 120;
-/* PATCH START: physics + input state */
+/* PATCH START: walk-only physics (no inertia) */
 var PHYS = {
-  accel: 12,         // px/s^2
-  decel: 18,         // px/s^2 when no input
-  maxSpeed: 40,      // px/s horizontal
-  deadzone: 36       // camera deadzone half-width (px)
+  walkSpeed: 60,   // pixels per second while a key is held
+  deadzone: 36     // camera deadzone half-width (px)
 };
-var keys = { left:false, right:false, up:false };
 /* PATCH END */
 
 /* ================= ELEMENTS ================= */
@@ -555,61 +552,51 @@ function loop(){
   requestAnimationFrame(loop);
 }
 
+/* PATCH START: instant walk update (no accel/decel) */
 function update(dt){
-  // — input → target velocity
-  var ax = 0;
-  if (keys.left && !keys.right)  ax = -PHYS.accel;
-  else if (keys.right && !keys.left) ax =  PHYS.accel;
+  // decide desired velocity from keys
+  var want = 0;
+  if (keys.left && !keys.right)  want = -PHYS.walkSpeed;
+  else if (keys.right && !keys.left) want =  PHYS.walkSpeed;
 
-  // integrate velocity with accel/decel
-  if (ax!==0){
-    player.vx += ax * dt;
-  } else {
-    // friction
-    if (player.vx > 0){ player.vx = Math.max(0, player.vx - PHYS.decel*dt); }
-    else if (player.vx < 0){ player.vx = Math.min(0, player.vx + PHYS.decel*dt); }
-  }
-  // clamp
-  if (player.vx >  PHYS.maxSpeed) player.vx =  PHYS.maxSpeed;
-  if (player.vx < -PHYS.maxSpeed) player.vx = -PHYS.maxSpeed;
-  if (player.vx!==0) player.facing = (player.vx>0?1:-1);
+  // apply instantly
+  player.vx = want;
+  if (player.vx !== 0) player.facing = (player.vx > 0 ? 1 : -1);
 
   // integrate position
   player.x += player.vx * dt;
 
   // bounds
-  if (player.x<0) player.x=0;
-  if (player.x>worldW-8) player.x=worldW-8;
+  if (player.x < 0) player.x = 0;
+  if (player.x > worldW - 8) player.x = worldW - 8;
 
-  // simple walk animation timer
-  if (Math.abs(player.vx)>1) { player.step = (player.step + 10*dt) % 2; } else { player.step = 0; }
+  // simple walk animation (on/off)
+  if (player.vx !== 0) { player.step = (player.step + 10*dt) % 2; } else { player.step = 0; }
 
-  // camera with deadzone
-  var cxTarget = player.x - canvas.width/2;
+  // camera with deadzone (keeps your existing feel)
   var leftDZ  = (player.x - PHYS.deadzone) - canvas.width/2;
   var rightDZ = (player.x + PHYS.deadzone) - canvas.width/2;
-
-  if (cameraX > leftDZ)  cameraX -= Math.min(80*dt, cameraX - leftDZ);
-  if (cameraX < rightDZ) cameraX += Math.min(80*dt, rightDZ - cameraX);
-
-  if (cameraX<0) cameraX=0;
-  if (cameraX>worldW-canvas.width) cameraX=worldW-canvas.width;
+  if (cameraX > leftDZ)  cameraX = Math.max(leftDZ, cameraX - 120*dt);
+  if (cameraX < rightDZ) cameraX = Math.min(rightDZ, cameraX + 120*dt);
+  if (cameraX < 0) cameraX = 0;
+  if (cameraX > worldW - canvas.width) cameraX = worldW - canvas.width;
 
   // parallax scroll (time based)
   parallax.cloudsNearX += 20*dt;
   parallax.cloudsFarX  -= 10*dt;
-  parallax.treeX = cameraX*0.5;
+  parallax.treeX = cameraX * 0.5;
 
-  // enter detection (near door)
-  var aligned=null;
+  // enter detection near the door
+  var aligned = null;
   for (var i=0;i<houses.length;i++){
     var door = doorXFor(houses[i]);
-    if (Math.abs(door - player.x) < 8){ aligned=houses[i]; break; }
+    if (Math.abs(door - player.x) < 8){ aligned = houses[i]; break; }
   }
-  if (aligned){ canEnterId=aligned.id; hintEl.classList.add('show'); } else { canEnterId=null; hintEl.classList.remove('show'); }
+  if (aligned){ canEnterId = aligned.id; hintEl.classList.add('show'); }
+  else { canEnterId = null; hintEl.classList.remove('show'); }
 
-  // up key = enter (edge-trigger)
-  if (keys.up && canEnterId){ tryEnter(); keys.up=false; }
+  // tap up/enter to go in
+  if (keys.up && canEnterId){ tryEnter(); keys.up = false; }
 }
 /* PATCH END */
 
