@@ -271,6 +271,12 @@ var playerGfx = {
 
 // simple animation clock/state
 var anim = { t: 0, state: "idle", playedJumpOnce: false };
+function setAnim(state){
+  if (anim.state !== state){
+    anim.state = state;
+    anim.t = 0; // reset the state clock on change
+  }
+}
 /* ================= ELEMENTS ================= */
 var canvas = document.getElementById('screen');
 var ctx = canvas.getContext('2d'); ctx.imageSmoothingEnabled = false;
@@ -305,7 +311,9 @@ var modalSave = document.getElementById('modal-save');
 
 /* ================= STATE ================= */
 var CATEGORY='events', EVENTS=[], DEALS=[], ITEMS=[];
-var worldW=256*6, cameraX=0, canEnterId=null, currentOpen=null;
+var worldW=256*6, cameraX=0, cameraY=0, canEnterId=null, currentOpen=null;
+var WORLD_H = 1200;   // rough world height; tweak later
+var VDEADZONE = 40;   // vertical deadzone like horizontal
 
 /* Player */
 var player = {
@@ -331,6 +339,16 @@ function doJump(){
   player.coyote = 0;
   anim.state = "jump";
   anim.playedJumpOnce = false;
+
+function landOn(surfaceY){
+  player.y = surfaceY;
+  player.vy = 0;
+  if (!player.grounded){
+    player.grounded = true;
+  }
+  player.coyote = PHYS.coyoteTime;
+  setAnim((player.vx !== 0) ? "walk" : "idle");
+}
 
   // SMALL forward carry if moving
 if (player.vx !== 0) player.vx = player.facing * (PHYS.walkSpeed + 10);
@@ -664,27 +682,22 @@ function buildParallax(){
   }
 }
 function buildPlatforms(){
-  // Clear and create 3 “rows” of platforms across the world
   PLATFORMS = [];
 
-  // Choose heights (screen y) — all above the ground but visible
-  var rows = [
-    GROUND_Y - 20, // low ledges
-    GROUND_Y - 36, // mid
-    GROUND_Y - 52  // high
-  ];
+  // Start above ground and climb upward
+  var x = 48;
+  var y = GROUND_Y - 60;    // first ledge ~60px above ground
+  var gapX = 150;           // horizontal spacing (tweak 140–180)
+  var stepY = 80;           // vertical spacing (safe with current jump)
+  var ledges = 10;          // number of steps up
+  var width = 96;           // each ledge width
 
-  // Make a few long segments with gaps you can jump across
-  var segLen = 96;   // px
-  var gap    = 48;   // px
+  for (var i=0; i<ledges; i++){
+    PLATFORMS.push({ x:x, y:y, w:width, h:6, row:i });
 
-  for (var r=0; r<rows.length; r++){
-    var y = rows[r];
-    var x = 32 + r*16; // small stagger so they don’t line up perfectly
-    while (x < worldW - 64){
-      PLATFORMS.push({ x:x, y:y, w:segLen, h:6, row:r });
-      x += segLen + gap + ((r%2)?16:0);
-    }
+    // zigzag: right, then back-left a bit, repeat
+    x += (i % 2 === 0) ? gapX : -gapX * 0.6;
+    y -= stepY; // climb into the sky
   }
 }
 
@@ -774,11 +787,9 @@ function update(dt){
       var withinX = (player.x >= p.x) && (player.x <= p.x + p.w);
       var crossedTop = (prevY <= p.y) && (player.y >= p.y);
       if (withinX && crossedTop){
-        player.y = p.y;
-        player.vy = 0;
-        player.grounded = true;
-        landedOnPlatform = true;
-        break;
+            landOn(p.y);
+      landedOnPlatform = true;
+      break;
       }
     }
   }
@@ -802,22 +813,6 @@ function update(dt){
     }
   }
 
-  // ground collision at GROUND_Y
-  if (player.y >= GROUND_Y){
-    player.y = GROUND_Y;
-    player.vy = 0;
-    if (!player.grounded){
-      player.grounded = true;
-      // if a jump was buffered just before landing, consume it now
-      if (player.jumpBuffer > 0){
-        player.jumpBuffer = 0;
-        doJump();
-        player.grounded = false;
-      }
-    }
-  } else {
-    player.grounded = false;
-  }
 
   // --- CONSUME JUMP BUFFER while airborne but within coyote time (leaving edges)
   if (player.jumpBuffer > 0 && (player.grounded || player.coyote > 0)){
@@ -826,13 +821,12 @@ function update(dt){
   }
 
   // --- ANIMATION STATE ---
-  if (!player.grounded){
-    // rising vs falling
-    anim.state = (player.vy < 0) ? "jump" : "fall";
-  } else {
-    anim.state = (player.vx !== 0) ? "walk" : "idle";
-  }
-  anim.t += dt;
+if (!player.grounded){
+  setAnim((player.vy < 0) ? "jump" : "fall");
+} else {
+  setAnim((player.vx !== 0) ? "walk" : "idle");
+}
+anim.t += dt;
 
   // simple legacy step (used by pixel fallback)
   if (player.vx !== 0) { player.step = (player.step + 10*dt) % 2; } else { player.step = 0; }
@@ -844,6 +838,14 @@ function update(dt){
   if (cameraX < rightDZ) cameraX = Math.min(rightDZ, cameraX + 120*dt);
   if (cameraX < 0) cameraX = 0;
   if (cameraX > worldW - canvas.width) cameraX = worldW - canvas.width;
+  // vertical follow
+var topDZ = (player.y - VDEADZONE) - canvas.height/2;
+var botDZ = (player.y + VDEADZONE) - canvas.height/2;
+
+if (cameraY > topDZ) cameraY = Math.max(topDZ, cameraY - 160*dt);
+if (cameraY < botDZ) cameraY = Math.min(botDZ, cameraY + 160*dt);
+
+cameraY = Math.max(0, Math.min(cameraY, Math.max(0, WORLD_H - canvas.height)));
 
   // --- PARALLAX ---
   parallax.cloudsNearX += 20*dt;
@@ -887,7 +889,7 @@ function render(){
   // Fences
   for (var i=0;i<fences.length;i++){
     var fx = fences[i].x - cameraX;
-    drawTileIndex(map.fence, fx, GROUND_Y-10);
+    drawTileIndex(map.fence, fx, (GROUND_Y-10) - cameraY);
   }
 
   // Buildings
@@ -896,7 +898,7 @@ function render(){
   }
 
   // Player
-  drawPlayer(Math.round(player.x - cameraX), Math.round(player.y));
+ drawPlayer(Math.round(player.x - cameraX), Math.round(player.y - cameraY));
 }
 
 /* ---------- DRAW HELPERS ---------- */
@@ -923,7 +925,7 @@ function drawTreeline(){
   var offset = - (parallax.treeX|0) % (TILE*3);
   for (var x=offset - TILE*3; x<canvas.width; x+=TILE*3){
     // draw tree as a 3x4 block (assuming big tree at map.tree)
-    drawBlock(map.tree, 3, 4, x, GROUND_Y - 32);
+    drawBlock(map.tree, 3, 4, x, (GROUND_Y - 32) - cameraY);
   }
   ctx.restore();
 }
@@ -932,13 +934,14 @@ function drawPlatforms(){
   for (var i=0;i<PLATFORMS.length;i++){
     var p = PLATFORMS[i];
     var sx = p.x - cameraX;
+    var sy = p.y - cameraY;
 
     // shadow
-    fillRect(sx, p.y+1, p.w, p.h, 0x2b1b30);
+   fillRect(sx, sy+1, p.w, p.h, 0x2b1b30);
     // deck
-    fillRect(sx, p.y,   p.w, p.h, 0x5f4db0); // placeholder color; swap to tiles later
+    fillRect(sx, sy,   p.w, p.h, 0x5f4db0); // placeholder color; swap to tiles later
     // top highlight
-    fillRect(sx, p.y-1, p.w, 1,   0xbcaeff);
+    fillRect(sx, sy-1, p.w, 1,   0xbcaeff);
   }
 }
 
@@ -964,7 +967,8 @@ function drawBuilding(h){
   var screenX = h.x - cameraX;
   var baseY = (typeof h.baseY === "number") ? h.baseY : GROUND_Y;
   var x = screenX - Math.floor(h.w/2);
-  var y = baseY - h.h;
+  var y = (baseY - h.h) - cameraY;
+ 
 
   if (h.kind==='cabin'){
     drawBlock(map.cabin, 4,3, x,y);
