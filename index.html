@@ -1,23 +1,26 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
-<title>SocialBurst – Deal a Plan</title>
+<meta charset="utf-8"/>
+<title>SocialBurst — Swipe Randomizer</title>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
 
+<!-- Fonts from your project (paths must remain intact) -->
 <style>
-  /* === FONTS (unchanged) === */
   @font-face {
     font-family: "BrotherBold";
     src: url("./SocialBurstRandomizer/fonts/BROTHER-Bold.ttf") format("truetype");
+    font-weight: 700; font-style: normal; font-display: swap;
   }
   @font-face {
     font-family: "Lexend";
     src: url("./SocialBurstRandomizer/fonts/Lexend-VariableFont_wght.ttf") format("truetype");
+    font-weight: 100 900; font-style: normal; font-display: swap;
   }
   @font-face {
     font-family: "MadeTommyBold";
     src: url("./SocialBurstRandomizer/fonts/MADE TOMMY Bold_PERSONAL USE.otf") format("opentype");
+    font-weight: 700; font-style: normal; font-display: swap;
   }
 
   :root{
@@ -25,463 +28,810 @@
     --yellow:#FFEC1F;
     --white:#ffffff;
     --black:#000000;
+
+    /* neutrals / layout */
+    --ink:#0f0f12;
+    --ink-2:#3a3a44;
+    --bg:#ffffff;
+    --radius:18px;
+    --shadow:0 10px 24px rgba(0,0,0,.18);
   }
 
-  /* === BASE (unchanged look) === */
+  * { box-sizing: border-box; }
+  html, body { height:100%; }
   body{
     margin:0;
-    min-height:100dvh;
-    background: var(--purple);
-    color:var(--white);
-    font-family: Lexend, sans-serif;
-    overflow:hidden;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: Lexend, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+    line-height:1.35;
+    overflow-x:hidden;
   }
 
-  .brand-badge{
-    position:fixed; inset:18px auto auto 18px; z-index:30;
+  /* Top bar */
+  header.topbar{
+    position: sticky; top:0; inset-inline:0; z-index:40;
+    background: var(--white);
+    border-bottom:1px solid rgba(0,0,0,.06);
     display:flex; align-items:center; gap:12px;
+    padding:12px 14px;
   }
-  .brand-badge img{ width:72px; height:72px; }
-  .brand-badge .brand-name{
-    font-family: BrotherBold, sans-serif;
-    font-size:36px;
-    color:var(--yellow);
+  .brand{
+    display:flex; align-items:center; gap:12px; min-width:160px;
+  }
+  .brand img{ width:48px; height:48px; object-fit:contain; }
+  .brand .name{
+    font-family: BrotherBold, sans-serif; font-size:24px; color:var(--purple); letter-spacing:.3px;
+  }
+  .spacer{ flex:1; }
+
+  .pill-group{
+    display:inline-flex; border:2px solid var(--purple); border-radius:999px; overflow:hidden; background:transparent;
+  }
+  .pill{
+    padding:8px 14px; border:none; background:transparent; color:var(--purple);
+    font-family: BrotherBold, sans-serif; cursor:pointer; letter-spacing:.2px;
+  }
+  .pill[aria-pressed="true"]{ background:var(--purple); color:var(--white); }
+
+  .saved-btn{
+    display:inline-flex; align-items:center; gap:8px; margin-left:10px;
+    padding:8px 12px; background:transparent; color:var(--purple);
+    border:2px solid var(--purple); border-radius:999px; font-family: BrotherBold, sans-serif; cursor:pointer;
+  }
+  .badge{
+    min-width:22px; height:22px; padding:0 6px; border-radius:999px;
+    background:var(--yellow); color:var(--black);
+    display:inline-flex; align-items:center; justify-content:center; font-size:12px; font-weight:800;
   }
 
-  .stage{
+  main{ display:grid; place-items:center; padding:18px 12px 28px; }
+
+  /* Deck */
+  #deck{
     position:relative;
-    height:100dvh;
-    display:flex; align-items:center; justify-content:center;
-    perspective: 1400px;
+    width:min(92vw, 520px);
+    height:min(76vh, 640px);
+    max-height:78dvh;
+  }
+  .card{
+    position:absolute; inset:0; background:var(--white); border-radius:var(--radius);
+    box-shadow: var(--shadow); padding:18px 18px 82px;
+    display:grid; grid-template-rows:auto auto auto 1fr; gap:8px;
+    user-select:none; touch-action:none;
+  }
+  .card h2{
+    margin:0; font-size:22px; line-height:1.2; color:var(--purple); font-family: BrotherBold, sans-serif;
+  }
+  .when-badge{
+    display:inline-block; background:var(--yellow); color:var(--black);
+    padding:6px 10px; border-radius:999px; font-weight:800; font-size:14px;
+    justify-self:start;
+  }
+  .venue{ color:var(--ink-2); font-weight:700; margin-top:-4px; }
+  .short{
+    margin-top:6px; color:var(--ink-2);
+    display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;
   }
 
-  /* GROUP WRAPPER: centers the triangle of envelopes */
-  .stack{
-    position:relative;
-    width:min(92vw, 960px);
-    display:grid;
-    place-items:center;
+  /* Drag hints */
+  .ghost-label{
+    position:absolute; top:16px; padding:6px 10px; border-radius:8px; border:2px solid currentColor;
+    font-weight:800; letter-spacing:.3px; opacity:0; transform:scale(.92); pointer-events:none;
+    transition:opacity .15s ease, transform .15s ease;
   }
+  .ghost-dislike{ left:16px; color:#161616; }
+  .ghost-like{ right:16px; color:var(--purple); }
 
-  /* Triangle layout (top-left, top-right, bottom-center) with spacing */
-  .env-grid{
-    display:grid;
-    grid-template-columns: 1fr 1fr;
-    grid-template-rows: auto auto;
-    gap: clamp(18px, 3.2vw, 28px);
-    align-items:center;
-    justify-items:center;
+  /* Buttons below deck */
+  #controls{
+    width:min(92vw,520px); display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-top:16px;
   }
-  .card-top-left { grid-column: 1; grid-row: 1; justify-self:end; }
-  .card-top-right{ grid-column: 2; grid-row: 1; justify-self:start; }
-  .card-bottom   { grid-column: 1 / span 2; grid-row: 2; justify-self:center; }
-
-  /* Individual envelope card wrapper (scoped state flags live here) */
-  .env-card{
-    position:relative;
-    width:min(42vw, 420px);
-    height: clamp(120px, 22vw, 160px);
+  .btn{
+    padding:14px 16px; border-radius:999px; border:2px solid var(--purple); background:transparent; color:var(--purple);
+    font-weight:800; cursor:pointer; box-shadow:0 2px 0 rgba(0,0,0,.06);
   }
+  .btn.primary{ background:var(--purple); color:var(--white); }
 
-  /* Keep the original 3D transform/flip behaviour but SCOPE to each card */
-  .envelope{
+  /* Empty state */
+  .empty{
     position:absolute; inset:0;
-    display:grid; place-items:center;
-    transform-style:preserve-3d;
-    transition: transform 0.8s ease;
-    z-index:10;
+    border:2px dashed rgba(0,0,0,.15); border-radius:var(--radius);
+    display:grid; place-items:center; text-align:center; padding:24px;
   }
-  .env-card.is-back .envelope{ transform: rotateY(180deg); }
+  .empty h3{ margin:0 0 10px; }
+  .empty p{ margin:0 0 16px; color:var(--ink-2); }
 
-  .env-face{
-    position:absolute; inset:0;
-    border-radius:10px;
-    background:var(--white);
-    border:1px solid var(--black);
-    display:grid; place-items:center;
-    backface-visibility:hidden;
-    padding-inline: clamp(10px, 2vw, 16px);
+  /* Modal */
+  .modal-backdrop{
+    position:fixed; inset:0; background:rgba(0,0,0,.45);
+    display:none; align-items:center; justify-content:center; padding:16px; z-index:100;
   }
-  .env-front{ transform: rotateY(0deg); }
-  .env-front .top-secret{
-    color:var(--purple); font-weight:800;
-    font-size: clamp(18px, 3.8vw, 26px);
-    margin-bottom: clamp(6px, 1.2vw, 8px);
+  .modal{
+    background:var(--white); color:var(--ink); width:min(94vw,640px); max-height:86dvh; overflow:auto;
+    border-radius:16px; box-shadow: var(--shadow); padding:18px;
   }
-  .env-front .env-label{
-    font-family: BrotherBold, sans-serif;
-    color:var(--purple);
-    font-size: clamp(20px, 4.6vw, 32px);
-    letter-spacing:0.5px;
-  }
-  .env-front .front-stack{
-    display:flex; flex-direction:column; align-items:center; justify-content:center;
-    gap: clamp(6px, 1.4vw, 10px);
-  }
+  .modal header{ display:flex; align-items:flex-start; gap:12px; margin-bottom:8px; }
+  .modal h2{ flex:1; margin:0; font-size:22px; line-height:1.2; color:var(--purple); font-family: BrotherBold, sans-serif; }
+  .modal .close{ border:none; background:transparent; font-size:24px; line-height:1; cursor:pointer; color:#444; }
+  .modal .meta{ display:grid; gap:6px; margin:10px 0 16px; color:var(--ink-2); font-weight:700; }
+  .modal .actions{ display:flex; flex-wrap:wrap; gap:10px; margin-top:12px; }
 
-  .env-back{ transform: rotateY(180deg); }
+  /* Saved drawer */
+  #saved-panel{
+    position:fixed; right:0; top:0; height:100%; width:min(92vw,420px);
+    background:var(--white); color:var(--ink);
+    border-left:1px solid rgba(0,0,0,.08);
+    transform:translateX(100%); transition:transform .25s ease; z-index:120;
+    display:grid; grid-template-rows:auto 1fr;
+  }
+  #saved-panel.open{ transform:translateX(0); }
+  #saved-panel header{ display:flex; align-items:center; justify-content:space-between; padding:14px 16px; border-bottom:1px solid rgba(0,0,0,.08); }
+  #saved-list{ overflow:auto; padding:12px; display:grid; gap:10px; }
+  .saved-item{ border:1px solid rgba(0,0,0,.12); border-radius:12px; padding:12px; display:grid; gap:6px; background:var(--white); }
+  .saved-item .title{ font-weight:800; color:var(--purple); }
+  .saved-item .meta{ color:var(--ink-2); font-weight:700; }
+  .saved-item .row{ display:flex; gap:8px; flex-wrap:wrap; margin-top:6px; }
 
-  .flap{
-    position:absolute; left:0; right:0; top:0;
-    height:52%;
-    transform-origin: top center;
-    transform: rotateX(0deg);
-    transition: transform 1s ease 0.25s;
-    pointer-events:none;
-  }
-  .flap-shape{
-    margin:0 auto; width:85%; height:100%;
-    background:var(--white);
-    border:2px solid var(--black);
-    clip-path: polygon(0 0, 100% 0, 50% 100%);
-  }
-  .logo-over-flap{
-    position:absolute; top:48%; left:50%;
-    transform: translateX(-50%);
-    width: clamp(52px, 9vw, 90px); height:auto;
-  }
-  .env-card.is-open .flap{ transform: rotateX(-180deg); }
-
-  /* back seams */
-  .back-seams{ position:absolute; inset:0; pointer-events:none; }
-  .seam{
-    position:absolute; background:var(--black);
-    width:2px;
-    transform-origin: bottom center;
-  }
-  .seam-bottom-left{  left:12px;  bottom:10px; height:66%; transform: rotate(35deg);  }
-  .seam-bottom-right{ right:12px; bottom:10px; height:66%; transform: rotate(-35deg); }
-  .seam-top-left{  left:12px;  top:10px; height:66%; transform-origin: top center; transform: rotate(-35deg); }
-  .seam-top-right{ right:12px; top:10px; height:66%; transform-origin: top center; transform: rotate(35deg); }
-
-  /* Letter per card (so only the clicked card reveals its own letter) */
-  .letter-wrap{
-    position:absolute; inset:0;
-    display:flex; align-items:center; justify-content:center;
-    z-index:20; pointer-events:none;
-  }
-  .letter{
-    width:min(68vw, 520px); max-height:72vh;
-    aspect-ratio:4/5;
-    background:var(--white);
-    border:1px solid var(--black);
-    border-radius:8px;
-    box-shadow:0 12px 30px rgba(0,0,0,0.25);
-    transform-origin: bottom center;
-    transform: translateY(25%) scaleY(0.5);
-    opacity:0;
-    transition: transform 0.8s ease, opacity 0.6s ease;
-    display:flex; flex-direction:column; justify-content:center;
-    padding: clamp(18px, 3.5vw, 28px);
-    gap: clamp(12px, 2vw, 20px);
-    text-align:center;
-  }
-  .env-card.is-open .letter{ transform: translateY(-2%) scaleY(1); opacity:1; pointer-events:auto; }
-
-  .letter h5{ margin:0; color:var(--purple); font-weight:800; font-size:clamp(16px,3.2vw,20px); }
-  .letter .title{ margin:0; color:var(--purple); font-weight:800; font-size:clamp(22px,5.2vw,34px); }
-  .letter .venue{ margin:0; color:var(--purple); font-weight:800; font-size:clamp(16px,3.8vw,20px); opacity:0.95; }
-  .letter .more{ margin-top:10px; }
-  .letter .more a{ color:var(--yellow); text-decoration:underline; font-weight:800; }
-
-  /* Clickable overlay per card */
-  .click-overlay{ position:absolute; inset:0; cursor:pointer; z-index:19; background:transparent; }
-
-  /* Reset button same look */
-  .reset-wrap{ position:fixed; left:0; right:0; bottom:22px;
-    display:flex; justify-content:center; z-index:25;
-    opacity:0; transform:translateY(10px);
-    transition: opacity 0.25s ease, transform 0.25s ease;
-    pointer-events:none;
-  }
-  .show-reset .reset-wrap{ opacity:1; transform:translateY(0); pointer-events:auto; }
-  .reset-btn{ width:64px; height:64px; background:var(--yellow);
-    border-radius:999px; border:none; cursor:pointer;
-    box-shadow:0 8px 22px rgba(0,0,0,0.25);
+  /* Reduced motion */
+  @media (prefers-reduced-motion: reduce){
+    .card{ transition:none !important; }
   }
 </style>
 </head>
 <body>
 
-<!-- BRAND -->
-<div class="brand-badge">
-  <img src="./SocialBurstRandomizer/img/logo.png" alt="logo"/>
-  <div class="brand-name">SocialBurst</div>
-</div>
+<header class="topbar" role="banner">
+  <div class="brand" aria-label="Brand">
+    <img src="./SocialBurstRandomizer/img/logo.png" alt="SocialBurst logo"/>
+    <div class="name">SocialBurst</div>
+  </div>
+  <div class="spacer"></div>
 
-<main class="stage">
-  <section class="stack">
-    <div class="env-grid">
-      <!-- DEALS (top-left) -->
-      <section id="envDeals" class="env-card card-top-left" aria-label="Open Deals">
-        <div class="click-overlay"></div>
-        <div class="envelope">
-          <div class="env-face env-front">
-            <div class="front-stack">
-              <div class="top-secret">TOP SECRET</div>
-              <div class="env-label">DEALS</div>
-            </div>
-          </div>
-          <div class="env-face env-back">
-            <div class="back-seams">
-              <span class="seam seam-bottom-left"></span>
-              <span class="seam seam-bottom-right"></span>
-              <span class="seam seam-top-left"></span>
-              <span class="seam seam-top-right"></span>
-            </div>
-            <img class="logo-over-flap" src="./SocialBurstRandomizer/img/logo.png" alt="">
-            <div class="flap"><div class="flap-shape"></div></div>
-          </div>
-        </div>
-        <div class="letter-wrap">
-          <article class="letter">
-            <h5>You Are Invited To….</h5>
-            <div class="title">Loading…</div>
-            <div class="venue"></div>
-            <div class="more"><a class="link" href="#" target="_blank">Open details</a></div>
-          </article>
-        </div>
-      </section>
+  <div class="pill-group" role="tablist" aria-label="Category">
+    <button id="tab-events" class="pill" role="tab" aria-selected="true" aria-pressed="true">Events</button>
+    <button id="tab-deals" class="pill" role="tab" aria-selected="false" aria-pressed="false">Deals</button>
+  </div>
 
-      <!-- MUSIC (top-right) -->
-      <section id="envMusic" class="env-card card-top-right" aria-label="Open Music">
-        <div class="click-overlay"></div>
-        <div class="envelope">
-          <div class="env-face env-front">
-            <div class="front-stack">
-              <div class="top-secret">TOP SECRET</div>
-              <div class="env-label">MUSIC</div>
-            </div>
-          </div>
-          <div class="env-face env-back">
-            <div class="back-seams">
-              <span class="seam seam-bottom-left"></span>
-              <span class="seam seam-bottom-right"></span>
-              <span class="seam seam-top-left"></span>
-              <span class="seam seam-top-right"></span>
-            </div>
-            <img class="logo-over-flap" src="./SocialBurstRandomizer/img/logo.png" alt="">
-            <div class="flap"><div class="flap-shape"></div></div>
-          </div>
-        </div>
-        <div class="letter-wrap">
-          <article class="letter">
-            <h5>You Are Invited To….</h5>
-            <div class="title">Loading…</div>
-            <div class="venue"></div>
-            <div class="more"><a class="link" href="#" target="_blank">Open details</a></div>
-          </article>
-        </div>
-      </section>
+  <button id="btn-saved" class="saved-btn" aria-haspopup="true" aria-controls="saved-panel" aria-expanded="false">
+    Saved <span id="saved-count" class="badge">0</span>
+  </button>
+</header>
 
-      <!-- EVENTS (bottom-center) -->
-      <section id="envEvents" class="env-card card-bottom" aria-label="Open Events">
-        <div class="click-overlay"></div>
-        <div class="envelope">
-          <div class="env-face env-front">
-            <div class="front-stack">
-              <div class="top-secret">TOP SECRET</div>
-              <div class="env-label">EVENTS</div>
-            </div>
-          </div>
-          <div class="env-face env-back">
-            <div class="back-seams">
-              <span class="seam seam-bottom-left"></span>
-              <span class="seam seam-bottom-right"></span>
-              <span class="seam seam-top-left"></span>
-              <span class="seam seam-top-right"></span>
-            </div>
-            <img class="logo-over-flap" src="./SocialBurstRandomizer/img/logo.png" alt="">
-            <div class="flap"><div class="flap-shape"></div></div>
-          </div>
-        </div>
-        <div class="letter-wrap">
-          <article class="letter">
-            <h5>You Are Invited To….</h5>
-            <div class="title">Loading…</div>
-            <div class="venue"></div>
-            <div class="more"><a class="link" href="#" target="_blank">Open details</a></div>
-          </article>
-        </div>
-      </section>
+<main>
+  <section id="deck" aria-live="polite" aria-label="Swipe deck">
+    <!-- cards injected here -->
+    <div id="empty" class="empty" hidden>
+      <div>
+        <h3>No more for today</h3>
+        <p>Try reshuffling to see the deck again.</p>
+        <button id="btn-reshuffle" class="btn primary">Reshuffle</button>
+      </div>
     </div>
   </section>
+
+  <div id="controls" aria-label="Swipe controls">
+    <button id="btn-left" class="btn" aria-label="Nope (Left)">❌ Nope</button>
+    <button id="btn-right" class="btn primary" aria-label="Details (Right)">✅ Details</button>
+  </div>
 </main>
 
-<div class="reset-wrap"><button id="resetBtn" class="reset-btn" aria-label="Reset"></button></div>
+<!-- Details Modal -->
+<div id="modal-backdrop" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+  <div class="modal">
+    <header>
+      <h2 id="modal-title">Title</h2>
+      <button id="modal-close" class="close" aria-label="Close details">×</button>
+    </header>
+    <div class="meta">
+      <div id="modal-when" class="when-badge"></div>
+      <div id="modal-venue" class="venue"></div>
+      <div id="modal-address"></div>
+      <div id="modal-phone"></div>
+    </div>
+    <div id="modal-desc"></div>
+    <div id="modal-links" class="actions"></div>
+    <div class="actions" style="margin-top:16px;">
+      <button id="modal-save" class="btn primary">Save</button>
+      <a id="modal-ics" class="btn" download="event.ics">Add to Calendar</a>
+    </div>
+  </div>
+</div>
 
-<audio id="openSfx" preload="auto">
-  <source src="./SocialBurstRandomizer/sfx/letter-open.mp3" type="audio/mpeg"/>
-</audio>
+<!-- Saved Drawer -->
+<aside id="saved-panel" aria-label="Saved items" aria-hidden="true">
+  <header>
+    <strong>Saved</strong>
+    <button id="saved-close" class="btn" aria-label="Close saved">Close</button>
+  </header>
+  <div id="saved-list"></div>
+</aside>
 
 <script>
-/* === CONFIG === */
-const CSV_URL="https://docs.google.com/spreadsheets/d/e/2PACX-1vQi9O78dGEZQ38WWiuMBKKNJwlp6J-yLmPP2lCjJJAHifG1YnpIPVvGt9tKdULSC4ZW9CBiIQOTOx7L/pub?gid=1474444500&single=true&output=csv";
+/* ============================================================
+   CONFIG — Replace this with your "Today" tab CSV publish URL
+   ============================================================ */
+var CSV_URL = "https://docs.google.com/spreadsheets/d/<SHEET_ID>/pub?gid=<GID_TODAY>&single=true&output=csv";
 
-/* === ELEMENTS === */
-const openSfx=document.getElementById('openSfx');
-const resetBtn=document.getElementById('resetBtn');
+/* ============================================================
+   STATE
+   ============================================================ */
+var CURRENT_KIND = 'events';   // 'events' | 'deals'
+var DECK = [];                 // working deck (shuffled)
+var INDEX = 0;                 // pointer
+var EVENTS = [];               // hydrated items
+var DEALS = [];
+var CURRENT_ITEM = null;
+var MODAL_OPEN = false;
 
-const envDeals = document.getElementById('envDeals');
-const envMusic = document.getElementById('envMusic');
-const envEvents= document.getElementById('envEvents');
+/* ============================================================
+   ELEMENTS
+   ============================================================ */
+var deckEl = document.getElementById('deck');
+var emptyEl = document.getElementById('empty');
+var btnReshuffle = document.getElementById('btn-reshuffle');
+var btnLeft = document.getElementById('btn-left');
+var btnRight = document.getElementById('btn-right');
+var tabEvents = document.getElementById('tab-events');
+var tabDeals  = document.getElementById('tab-deals');
+var savedBtn  = document.getElementById('btn-saved');
+var savedCountEl = document.getElementById('saved-count');
 
-let allEvents=[], loaded=false, isAnimating=false;
+var modalBackdrop = document.getElementById('modal-backdrop');
+var modalClose = document.getElementById('modal-close');
+var modalTitle = document.getElementById('modal-title');
+var modalWhen = document.getElementById('modal-when');
+var modalVenue = document.getElementById('modal-venue');
+var modalAddress = document.getElementById('modal-address');
+var modalPhone = document.getElementById('modal-phone');
+var modalDesc = document.getElementById('modal-desc');
+var modalLinks = document.getElementById('modal-links');
+var modalSave = document.getElementById('modal-save');
+var modalIcs = document.getElementById('modal-ics');
 
-/* === CSV PARSING (kept minimal & compatible) === */
-function parseCSV(text){
-  const rows=text.split(/\r?\n/).filter(l=>l.trim().length);
-  const header=rows.shift().split(',').map(h=>h.trim());
-  const idx={
-    title: header.indexOf('title'),
-    venue: header.indexOf('venue_name'),
-    url:   header.indexOf('source_url'),
-    start: header.indexOf('start_datetime'),
-    end:   header.indexOf('end_datetime'),
-    cat:   header.indexOf('category')
+var savedPanel = document.getElementById('saved-panel');
+var savedClose = document.getElementById('saved-close');
+var savedList  = document.getElementById('saved-list');
+
+/* ============================================================
+   BOOT
+   ============================================================ */
+window.addEventListener('DOMContentLoaded', function(){
+  attachUI();
+  hydrateFromSheet().then(function(){ setCategory('events'); updateSavedBadge(); });
+});
+
+/* ============================================================
+   UI WIRING
+   ============================================================ */
+function attachUI(){
+  tabEvents.addEventListener('click', function(){ setCategory('events'); });
+  tabDeals.addEventListener('click',  function(){ setCategory('deals'); });
+
+  btnLeft.addEventListener('click', function(){ simulateSwipe('left'); });
+  btnRight.addEventListener('click', function(){ simulateSwipe('right'); });
+
+  btnReshuffle.addEventListener('click', function(){
+    shuffleActive();
+    renderNextCard(true);
+  });
+
+  savedBtn.addEventListener('click', toggleSavedPanel);
+  savedClose.addEventListener('click', function(){ setSavedPanel(false); });
+
+  document.addEventListener('keydown', function(e){
+    if (MODAL_OPEN){
+      if (e.key === 'Escape') closeDetails();
+      return;
+    }
+    if (e.key === 'ArrowLeft') simulateSwipe('left');
+    if (e.key === 'ArrowRight') simulateSwipe('right');
+  });
+
+  modalBackdrop.addEventListener('click', function(e){
+    if (e.target === modalBackdrop) closeDetails();
+  });
+  modalClose.addEventListener('click', closeDetails);
+
+  modalSave.addEventListener('click', function(){
+    if (CURRENT_ITEM) saveItem(CURRENT_ITEM);
+  });
+}
+
+/* ============================================================
+   DATA HYDRATION (CSV)
+   ============================================================ */
+function hydrateFromSheet(){
+  return fetch(CSV_URL, { cache: 'no-store' })
+    .then(function(res){
+      if (!res.ok) throw new Error('Fetch failed ' + res.status);
+      return res.text();
+    })
+    .then(function(csvText){
+      var objects = parseCsvToObjects(csvText);
+      var parts = partitionByType(objects);
+      EVENTS = parts.events;
+      DEALS  = parts.deals;
+      if (!EVENTS.length && !DEALS.length){
+        // fallback
+        var samples = getFallbackSamples();
+        EVENTS = samples.events;
+        DEALS  = samples.deals;
+      }
+    })
+    .catch(function(){
+      var samples = getFallbackSamples();
+      EVENTS = samples.events;
+      DEALS  = samples.deals;
+    });
+}
+
+/* Robust CSV → objects with header-insensitive mapping */
+function parseCsvToObjects(text){
+  if (!text || !text.trim()) return [];
+  var rows = csvToRows(text);
+  if (!rows.length) return [];
+  var headers = rows[0].map(function(h){ return String(h||'').trim().toLowerCase(); });
+  var items = [];
+  for (var i=1; i<rows.length; i++){
+    var row = rows[i];
+    if (row.every(function(c){ return !String(c||'').trim(); })) continue;
+    var obj = {};
+    for (var j=0; j<headers.length; j++){
+      var key = headers[j] || ('col_'+j);
+      obj[key] = (row[j] == null ? '' : String(row[j])).trim();
+    }
+    items.push(normalizeCsvRow(obj, i));
+  }
+  return items;
+}
+
+function csvToRows(text){
+  var rows = [];
+  var cur = '';
+  var row = [];
+  var inQuotes = false;
+  for (var i=0; i<text.length; i++){
+    var ch = text[i];
+    var next = text[i+1];
+    if (ch === '"'){
+      if (inQuotes && next === '"'){ cur += '"'; i++; }
+      else { inQuotes = !inQuotes; }
+    } else if (ch === ',' && !inQuotes){
+      row.push(cur); cur = '';
+    } else if ((ch === '\n' || ch === '\r') && !inQuotes){
+      if (ch === '\r' && next === '\n') i++;
+      row.push(cur); rows.push(row); row = []; cur = '';
+    } else {
+      cur += ch;
+    }
+  }
+  row.push(cur); rows.push(row);
+  return rows;
+}
+
+function normalizeCsvRow(obj, idx){
+  function pick(names, def){
+    for (var k=0; k<names.length; k++){
+      var n = names[k];
+      if (obj.hasOwnProperty(n) && String(obj[n]).trim()!=='') return String(obj[n]).trim();
+    }
+    return def || '';
+  }
+  var type = pick(['type','category'], '').toLowerCase();
+  // Treat 'deal' as deal; anything else defaults to event
+  var canonicalType = (type === 'deal') ? 'deal' : 'event';
+
+  var title = pick(['title','name']);
+  var when  = pick(['when','time','window','start_datetime']); // accepts raw if given
+  var venue = pick(['venue','venue_name','business','place']);
+  var short = pick(['short','teaser','summary']);
+  var description = pick(['description','details','desc']);
+  var link  = pick(['link','url','website','source_url']);
+  var phone = pick(['phone','tel','telephone']);
+  var address = pick(['address','addr','location']);
+  var lat = parseFloat(pick(['lat','latitude'], ''));
+  var lng = parseFloat(pick(['lng','lon','longitude'], ''));
+  var tags = pick(['tags'], '');
+
+  // If start/end given as "10:00 am  8/9" style, rebuild 'when'
+  var sParsed = parseDMYTime(pick(['start_datetime'], ''));
+  var eParsed = parseDMYTime(pick(['end_datetime'], ''));
+  var whenStr = when;
+  if (sParsed || eParsed){
+    var sTxt = sParsed ? sParsed.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '';
+    var eTxt = eParsed ? eParsed.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '';
+    if (sParsed && eParsed) whenStr = 'Today ' + sTxt + '–' + eTxt;
+    else if (sParsed)       whenStr = 'Today ' + sTxt;
+    else if (eParsed)       whenStr = 'Until ' + eTxt + ' today';
+  }
+
+  return {
+    id: stableIdFrom({title:title, venue:venue, when:whenStr, idx:idx}),
+    type: canonicalType,
+    title: title || 'Untitled',
+    when: whenStr || 'Today',
+    venue: venue || '',
+    short: short,
+    description: description,
+    link: link || undefined,
+    phone: phone || undefined,
+    address: address || undefined,
+    lat: isFinite(lat) ? lat : undefined,
+    lng: isFinite(lng) ? lng : undefined,
+    tags: tags ? tags.split(',').map(function(s){return s.trim();}).filter(Boolean) : undefined
   };
-  return rows.map(line=>{
-    const parts=line.split(",");
-    return {
-      title: parts[idx.title]||'',
-      venue: parts[idx.venue]||'',
-      url:   parts[idx.url]||'#',
-      start_datetime: parts[idx.start]||'',
-      end_datetime:   parts[idx.end]||'',
-      category: (idx.cat>=0 ? (parts[idx.cat]||'') : '')
-    };
-  });
 }
 
-/* parse “10:00 am  8/9” or “00:00  14/9” to Date (this year, local) */
+/* "10:00 am  8/9" → Date (this year, local). Returns null if not match */
 function parseDMYTime(str){
-  const s=(str||'').toLowerCase().replace(/\u00a0|\u202f/g,' ').trim();
-  if(!s) return null;
-  const m=s.match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm|a\.m\.|p\.m\.)?\s+(\d{1,2})\/(\d{1,2})$/i);
-  if(!m) return null;
-  let hh=parseInt(m[1],10);
-  const mm=m[2]?parseInt(m[2],10):0;
-  const ap=(m[3]||'').replace(/\./g,'').toLowerCase();
-  const d=parseInt(m[4],10), mo=parseInt(m[5],10);
-  const year=(new Date()).getFullYear();
-  if(ap==='pm' && hh<12) hh+=12;
-  if(ap==='am' && hh===12) hh=0;
-  const dt=new Date(year, mo-1, d, hh, mm, 0, 0);
-  return isNaN(dt)?null:dt;
-}
-function isActiveToday(ev, now){
-  const s=parseDMYTime(ev.start_datetime);
-  let   e=parseDMYTime(ev.end_datetime);
-  if(!s && !e) return false;
-
-  const sameDay = (a,b)=>a && b && a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate();
-  const isStartToday = s && sameDay(s, now);
-  const isEndToday   = e && sameDay(e, now);
-  if(!isStartToday && !isEndToday) return false;
-
-  if(s && !e) e = new Date(s.getTime()+2*60*60*1000);
-  const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23,59,59,999);
-  const effectiveEnd = (isEndToday && e) ? e : endOfToday;
-  return effectiveEnd > now;
+  var s = String(str||'').toLowerCase().replace(/\u00a0|\u202f/g,' ').trim();
+  if (!s) return null;
+  var m = s.match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm|a\.m\.|p\.m\.)?\s+(\d{1,2})\/(\d{1,2})$/i);
+  if (!m) return null;
+  var hh = parseInt(m[1],10);
+  var mm = m[2]?parseInt(m[2],10):0;
+  var ap = (m[3]||'').replace(/\./g,'').toLowerCase();
+  var d  = parseInt(m[4],10);
+  var mo = parseInt(m[5],10);
+  var year = (new Date()).getFullYear();
+  if (ap==='pm' && hh<12) hh+=12;
+  if (ap==='am' && hh===12) hh=0;
+  var dt = new Date(year, mo-1, d, hh, mm, 0, 0);
+  return isNaN(+dt) ? null : dt;
 }
 
-/* LOAD + cache */
-async function ensureLoaded(){
-  if(loaded) return;
-  const res=await fetch(CSV_URL);
-  const txt=await res.text();
-  allEvents=parseCSV(txt);
-  loaded=true;
+function partitionByType(items){
+  var events = [], deals = [];
+  for (var i=0;i<items.length;i++){
+    if (items[i].type === 'deal') deals.push(items[i]);
+    else events.push(items[i]);
+  }
+  return { events: events, deals: deals };
 }
 
-/* Helpers */
-function closeAll(){
-  document.body.classList.remove('show-reset');
-  [envDeals, envMusic, envEvents].forEach(w=>{
-    w.classList.remove('is-open','is-back');
-  });
+/* ============================================================
+   DECK & SWIPE
+   ============================================================ */
+function setCategory(kind){
+  if (kind!=='events' && kind!=='deals') return;
+  CURRENT_KIND = kind;
+  tabEvents.setAttribute('aria-pressed', String(kind==='events'));
+  tabDeals.setAttribute('aria-pressed',  String(kind==='deals'));
+  tabEvents.setAttribute('aria-selected', String(kind==='events'));
+  tabDeals.setAttribute('aria-selected',  String(kind==='deals'));
+
+  DECK = (kind==='events' ? EVENTS.slice() : DEALS.slice());
+  shuffle(DECK);
+  INDEX = 0;
+  renderNextCard(true);
 }
 
-function pickRandom(arr){
-  if(!arr || !arr.length) return null;
-  return arr[Math.floor(Math.random()*arr.length)];
+function shuffleActive(){
+  DECK = (CURRENT_KIND==='events' ? EVENTS.slice() : DEALS.slice());
+  shuffle(DECK);
+  INDEX = 0;
 }
 
-function fillLetter(wrapper, ev){
-  const titleEl = wrapper.querySelector('.letter .title');
-  const venueEl = wrapper.querySelector('.letter .venue');
-  const linkEl  = wrapper.querySelector('.letter .more .link');
+function shuffle(arr){
+  for (var i=arr.length-1;i>0;i--){
+    var j = Math.floor(Math.random()*(i+1));
+    var t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+  }
+}
 
-  if(!ev){
-    titleEl.textContent = 'No matching items today';
-    venueEl.textContent = '';
-    linkEl.href = '#';
+function renderNextCard(reset){
+  var existing = deckEl.querySelectorAll('.card');
+  for (var i=0;i<existing.length;i++) existing[i].remove();
+
+  if (INDEX >= DECK.length){
+    emptyEl.hidden = false;
+    CURRENT_ITEM = null;
     return;
   }
-  titleEl.textContent = ev.title || 'Untitled';
-  venueEl.textContent = ev.venue || '';
-  linkEl.href = ev.url || '#';
+  emptyEl.hidden = true;
+
+  var item = DECK[INDEX];
+  CURRENT_ITEM = item;
+
+  var card = document.createElement('article');
+  card.className = 'card';
+  card.setAttribute('tabindex','0');
+  card.setAttribute('aria-label', item.title);
+
+  var gl = document.createElement('div'); gl.className='ghost-label ghost-dislike'; gl.textContent='Nope';
+  var gr = document.createElement('div'); gr.className='ghost-label ghost-like';    gr.textContent='Save';
+
+  var h2 = document.createElement('h2'); h2.textContent = item.title || '(Untitled)';
+  var when = document.createElement('div'); when.className='when-badge'; when.textContent = item.when || 'Today';
+  var venue = document.createElement('div'); venue.className='venue'; venue.textContent = item.venue || '';
+  var short = document.createElement('div'); short.className='short'; short.textContent = item.short || item.description || '';
+
+  card.appendChild(gl); card.appendChild(gr); card.appendChild(h2); card.appendChild(when); card.appendChild(venue); card.appendChild(short);
+  deckEl.appendChild(card);
+
+  attachDrag(card, item);
 }
 
-/* Category filter (case-insensitive exact match) */
-function filterByCategories(events, cats){
-  const set = cats.map(c=>c.trim().toLowerCase());
-  const now = new Date();
-  return events.filter(ev=>{
-    const cat=(ev.category||'').trim().toLowerCase();
-    return isActiveToday(ev, now) && set.includes(cat);
-  });
-}
+function attachDrag(cardEl, item){
+  var startX=0, startY=0, curX=0, curY=0, dragging=false;
 
-/* OPEN SEQUENCE per card */
-async function openCard(wrapper, cats){
-  if(isAnimating) return; isAnimating=true;
+  function onDown(x,y){ dragging=true; startX=x; startY=y; cardEl.style.transition='transform 0s'; }
+  function onMove(x,y){
+    if (!dragging) return;
+    curX = x - startX; curY = y - startY;
+    var rot = Math.max(-7, Math.min(7, (curX/10)));
+    cardEl.style.transform = 'translate('+curX+'px,'+curY+'px) rotate('+rot+'deg)';
+    var likeGhost = cardEl.querySelector('.ghost-like');
+    var nopeGhost = cardEl.querySelector('.ghost-dislike');
+    var intensity = Math.min(1, Math.abs(curX)/120);
+    if (curX > 0){
+      likeGhost.style.opacity = String(intensity);
+      likeGhost.style.transform = 'scale('+(0.92 + 0.08*intensity)+')';
+      nopeGhost.style.opacity = '0';
+      nopeGhost.style.transform = 'scale(0.92)';
+    } else if (curX < 0){
+      nopeGhost.style.opacity = String(intensity);
+      nopeGhost.style.transform = 'scale('+(0.92 + 0.08*intensity)+')';
+      likeGhost.style.opacity = '0';
+      likeGhost.style.transform = 'scale(0.92)';
+    } else {
+      likeGhost.style.opacity = '0'; likeGhost.style.transform = 'scale(0.92)';
+      nopeGhost.style.opacity = '0'; nopeGhost.style.transform = 'scale(0.92)';
+    }
+  }
+  function onUp(){
+    if (!dragging) return;
+    dragging=false;
+    var committed = Math.abs(curX) > 120;
+    cardEl.style.transition = 'transform .22s ease';
+    if (!committed){
+      cardEl.style.transform = 'translate(0,0) rotate(0)';
+      var likeGhost = cardEl.querySelector('.ghost-like');
+      var nopeGhost = cardEl.querySelector('.ghost-dislike');
+      likeGhost.style.opacity='0'; likeGhost.style.transform='scale(0.92)';
+      nopeGhost.style.opacity='0'; nopeGhost.style.transform='scale(0.92)';
+      return;
+    }
+    var dir = (curX > 0) ? 'right' : 'left';
+    var offX = (dir==='right') ? (window.innerWidth*0.8) : -(window.innerWidth*0.8);
+    cardEl.style.transform = 'translate('+offX+'px,'+curY+'px) rotate('+(dir==='right'?12:-12)+'deg)';
 
-  try{ await ensureLoaded(); }catch(e){ /* ignore */ }
-
-  // Close others
-  closeAll();
-
-  // Filter and pick
-  const filtered = filterByCategories(allEvents, cats);
-  const chosen = pickRandom(filtered);
-  if(!chosen && (!allEvents || !allEvents.length)){
-    // No rows at all / fetch failed – show generic fallback
-    fillLetter(wrapper, null);
-  }else if(!chosen){
-    fillLetter(wrapper, null);
-  }else{
-    fillLetter(wrapper, chosen);
+    setTimeout(function(){
+      if (dir==='right') openDetails(item);
+      INDEX++;
+      renderNextCard();
+    }, 180);
   }
 
-  // Animate
-  wrapper.classList.add('is-back');
-  setTimeout(()=>{ try{ openSfx.currentTime=0; openSfx.play().catch(()=>{});}catch(e){}; },260);
-  setTimeout(()=>{
-    wrapper.classList.add('is-open');
-    document.body.classList.add('show-reset');
-    setTimeout(()=>{ isAnimating=false; }, 900);
-  }, 700);
+  // Mouse
+  cardEl.addEventListener('mousedown', function(e){ e.preventDefault(); onDown(e.clientX, e.clientY); });
+  window.addEventListener('mousemove', function(e){ onMove(e.clientX, e.clientY); });
+  window.addEventListener('mouseup', function(){ onUp(); });
+
+  // Touch
+  cardEl.addEventListener('touchstart', function(e){
+    var t=e.changedTouches[0]; onDown(t.clientX, t.clientY);
+  }, {passive:true});
+  cardEl.addEventListener('touchmove', function(e){
+    var t=e.changedTouches[0]; onMove(t.clientX, t.clientY);
+  }, {passive:true});
+  cardEl.addEventListener('touchend', function(){ onUp(); }, {passive:true});
 }
 
-/* WIRE UP */
-envDeals.querySelector('.click-overlay').addEventListener('click', ()=>openCard(envDeals, ['deal']));
-envMusic.querySelector('.click-overlay').addEventListener('click', ()=>openCard(envMusic, ['live_music']));
-envEvents.querySelector('.click-overlay').addEventListener('click', ()=>openCard(envEvents, ['community','pub_quiz']));
+function simulateSwipe(direction){
+  var card = deckEl.querySelector('.card');
+  if (!card) return;
+  var item = CURRENT_ITEM;
+  var curY = 0;
+  card.style.transition = 'transform .22s ease';
+  var offX = (direction==='right') ? (window.innerWidth*0.8) : -(window.innerWidth*0.8);
+  card.style.transform = 'translate('+offX+'px,'+curY+'px) rotate('+(direction==='right'?12:-12)+'deg)';
+  setTimeout(function(){
+    if (direction==='right' && item) openDetails(item);
+    INDEX++;
+    renderNextCard();
+  }, 180);
+}
 
-/* Click letter also (quality of life) */
-[envDeals, envMusic, envEvents].forEach(w=>{
-  w.querySelector('.letter').addEventListener('click', ()=>{
-    if(!w.classList.contains('is-open')) openCard(w, []);
-  });
-});
+/* ============================================================
+   MODAL & SAVED
+   ============================================================ */
+function openDetails(item){
+  MODAL_OPEN = true;
+  modalTitle.textContent = item.title || '(Untitled)';
+  modalWhen.textContent  = item.when || 'Today';
+  modalVenue.textContent = item.venue || '';
+  modalAddress.textContent = item.address || '';
+  modalPhone.textContent   = item.phone || '';
+  modalDesc.textContent    = item.description || '';
 
-/* Reset */
-resetBtn.addEventListener('click', ()=>{
-  if(isAnimating) return;
-  closeAll();
-});
+  while (modalLinks.firstChild) modalLinks.removeChild(modalLinks.firstChild);
+  if (item.link){
+    var a = document.createElement('a');
+    a.className='btn';
+    a.href = item.link; a.target='_blank'; a.rel='noopener';
+    a.textContent='Open link';
+    modalLinks.appendChild(a);
+  }
+  if (item.address){
+    var g = document.createElement('a');
+    g.className='btn';
+    g.href = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(item.address);
+    g.target='_blank'; g.rel='noopener';
+    g.textContent='Get directions';
+    modalLinks.appendChild(g);
+  }
+  if (item.phone){
+    var p = document.createElement('a');
+    p.className='btn';
+    p.href = 'tel:' + item.phone.replace(/\s+/g,'');
+    p.textContent='Call';
+    modalLinks.appendChild(p);
+  }
+
+  var ics = makeIcsFor(item);
+  modalIcs.href = ics;
+
+  modalBackdrop.style.display='flex';
+}
+
+function closeDetails(){
+  MODAL_OPEN = false;
+  modalBackdrop.style.display='none';
+}
+
+function getSaved(){
+  try{ return JSON.parse(localStorage.getItem('sb_saved') || '[]'); }
+  catch(e){ return []; }
+}
+function setSaved(arr){
+  localStorage.setItem('sb_saved', JSON.stringify(arr));
+}
+function isSaved(id){
+  var arr = getSaved();
+  for (var i=0;i<arr.length;i++){ if (arr[i].id===id) return true; }
+  return false;
+}
+
+function saveItem(item){
+  var arr = getSaved();
+  for (var i=0;i<arr.length;i++){ if (arr[i].id===item.id) { closeDetails(); return; } }
+  arr.push(item);
+  setSaved(arr);
+  updateSavedBadge();
+  renderSavedList();
+  closeDetails();
+}
+
+function removeSaved(id){
+  var arr = getSaved().filter(function(x){ return x.id!==id; });
+  setSaved(arr);
+  updateSavedBadge();
+  renderSavedList();
+}
+
+function updateSavedBadge(){
+  var n = getSaved().length;
+  savedCountEl.textContent = String(n);
+}
+
+function renderSavedList(){
+  while (savedList.firstChild) savedList.removeChild(savedList.firstChild);
+  var arr = getSaved();
+  if (!arr.length){
+    var d = document.createElement('div');
+    d.textContent = 'No saved items yet.';
+    savedList.appendChild(d);
+    return;
+  }
+  for (var i=0;i<arr.length;i++){
+    var it = arr[i];
+    var card = document.createElement('div');
+    card.className='saved-item';
+
+    var title = document.createElement('div'); title.className='title'; title.textContent = it.title || '(Untitled)';
+    var meta  = document.createElement('div'); meta.className='meta'; meta.textContent = (it.when||'Today') + (it.venue?(' • ' + it.venue):'');
+
+    var row = document.createElement('div'); row.className='row';
+
+    var bDet = document.createElement('button'); bDet.className='btn'; bDet.textContent='Details';
+    bDet.addEventListener('click', (function(copy){ return function(){ openDetails(copy); }; })(it));
+
+    var bRem = document.createElement('button'); bRem.className='btn primary'; bRem.textContent='Remove';
+    bRem.addEventListener('click', (function(id){ return function(){ removeSaved(id); }; })(it.id));
+
+    row.appendChild(bDet); row.appendChild(bRem);
+    card.appendChild(title); card.appendChild(meta); card.appendChild(row);
+    savedList.appendChild(card);
+  }
+}
+
+function toggleSavedPanel(){
+  var open = !savedPanel.classList.contains('open');
+  setSavedPanel(open);
+}
+function setSavedPanel(open){
+  if (open){
+    renderSavedList();
+    savedPanel.classList.add('open');
+    savedBtn.setAttribute('aria-expanded','true');
+    savedPanel.setAttribute('aria-hidden','false');
+  } else {
+    savedPanel.classList.remove('open');
+    savedBtn.setAttribute('aria-expanded','false');
+    savedPanel.setAttribute('aria-hidden','true');
+  }
+}
+
+/* ============================================================
+   ICS GENERATION
+   ============================================================ */
+function makeIcsFor(item){
+  // Very simple VEVENT; if no time, set today + 1hr
+  var now = new Date();
+  var start = parseDMYTimeFromWhen(item.when) || new Date(now.getFullYear(), now.getMonth(), now.getDate(), 19, 0, 0);
+  var end   = new Date(start.getTime() + 60*60*1000);
+
+  function fmt(dt){
+    function p(n){ return (n<10?'0':'')+n; }
+    return dt.getUTCFullYear() + p(dt.getUTCMonth()+1) + p(dt.getUTCDate()) + 'T' + p(dt.getUTCHours()) + p(dt.getUTCMinutes()) + p(dt.getUTCSeconds()) + 'Z';
+  }
+
+  var lines = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//SocialBurst//Swipe Randomizer//EN',
+    'BEGIN:VEVENT',
+    'UID:'+ item.id + '@socialburst',
+    'DTSTAMP:' + fmt(new Date()),
+    'DTSTART:' + fmt(start),
+    'DTEND:'   + fmt(end),
+    'SUMMARY:' + escIcs(item.title||''),
+    'LOCATION:'+ escIcs(item.venue||''),
+    'DESCRIPTION:' + escIcs((item.description||'') + (item.link?(' ' + item.link):'')),
+    'END:VEVENT',
+    'END:VCALENDAR'
+  ];
+  var blob = new Blob([lines.join('\r\n')], {type:'text/calendar'});
+  return URL.createObjectURL(blob);
+}
+
+function escIcs(s){
+  return String(s).replace(/([,;])/g, '\\$1').replace(/\n/g,'\\n');
+}
+
+// Try to parse "Today 19:00–21:00" or "Today 19:00"
+function parseDMYTimeFromWhen(str){
+  var s = String(str||'').toLowerCase();
+  var m = s.match(/today\s+(\d{1,2}):(\d{2})/);
+  if (!m) return null;
+  var hh = parseInt(m[1],10), mm = parseInt(m[2],10);
+  var now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate(), hh, mm, 0, 0);
+}
+
+/* ============================================================
+   UTILS & FALLBACK
+   ============================================================ */
+function stableIdFrom(seed){
+  var base = (seed.title||'') + '|' + (seed.venue||'') + '|' + (seed.when||'') + '|' + (seed.idx||'');
+  var h=0; for (var i=0;i<base.length;i++){ h=((h<<5)-h)+base.charCodeAt(i); h|=0; }
+  return 'sb_'+Math.abs(h);
+}
+
+function getFallbackSamples(){
+  var events = [
+    { id:'e1', type:'event', title:'Pub Quiz Night', when:'Today 19:30–21:30', venue:'The Jolly Sailor, St Albans', short:'£50 bar tab • Teams up to 6', description:'Classic general knowledge quiz. Arrive early!', link:'#' },
+    { id:'e2', type:'event', title:'Open Mic Evening', when:'Today 20:00–22:30', venue:'The Horn, St Albans', short:'Sign-ups from 19:00', description:'Acoustic sets, spoken word welcome.', link:'#' },
+    { id:'e3', type:'event', title:'Board Game Social', when:'Today 18:00–22:00', venue:'The White Lion', short:'Bring a game or join a table', description:'Casual night, all levels welcome.', link:'#' }
+  ];
+  var deals = [
+    { id:'d1', type:'deal', title:'2-for-1 Pizzas', when:'Valid until 17:00', venue:'Pinsa Lab', short:'Dine-in only', description:'Show this screen at the till to redeem.', link:'#' },
+    { id:'d2', type:'deal', title:'£5 Cocktails', when:'Today 17:00–19:00', venue:'Peahen', short:'House list only', description:'Happy hour special.', link:'#' }
+  ];
+  return { events:events, deals:deals };
+}
 </script>
 </body>
 </html>
-
