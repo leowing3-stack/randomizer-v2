@@ -32,7 +32,7 @@
     --shell:#6a2ee0;           /* Game Boy shell (SocialBurst purple variant) */
     --shell-dark:#4f22a8;
     --shell-light:#8d5bf0;
-    --screen:#9bbc0f;          /* old-school GB green */
+    --screen:#9bbc0f;          /* kept for bezel label tone */
     --screen-dark:#306230;
     --screen-edge:#567d2c;
     --ink:#0f0f12;
@@ -106,7 +106,7 @@
     padding:6px;
   }
   .screen-inner{
-    width:100%; height:100%; background: var(--screen);
+    width:100%; height:100%; background: #8CC7FF; /* actual blue, but canvas handles final scene */
     border-radius: 8px;
     image-rendering: pixelated; /* crispy canvas */
     overflow:hidden;
@@ -177,7 +177,7 @@
   }
   .round:active{ transform: translateY(1px); }
 
-  /* Saved drawer & modal reuse previous styling */
+  /* Saved drawer & modal (unchanged) */
   #saved-panel{
     position:fixed; right:0; top:0; height:100%; width:min(92vw,420px);
     background:#fff; color:var(--ink); border-left:1px solid rgba(0,0,0,.08);
@@ -340,7 +340,7 @@ var CATEGORY = 'events';
 var EVENTS = [];
 var DEALS = [];
 var ITEMS = [];
-var houses = [];     // [{id, x, title}]
+var houses = [];     // [{id, x, w, h, variant, winRows, winCols, seed, title, when}]
 var player = { x: 10, y: 120, w: 8, h: 12, vx: 0 };
 var speed = 1.5;     // pixels per frame in 256x160 space
 var worldW = 256*6;  // world width
@@ -500,6 +500,29 @@ function fallback(){
   };
 }
 
+/* ================= VARIATION HELPERS (houses & sky) ================= */
+function prng(seed){ var x = Math.sin(seed) * 10000; return x - Math.floor(x); }
+function rndi(seed, min, max){ return Math.floor(prng(seed)*(max-min+1)) + min; }
+
+/* tiny cloud made of pixels */
+function drawCloud(cx, cy, scale){
+  var w = Math.max(2, Math.floor(6*scale)), h = Math.max(2, Math.floor(3*scale));
+  for(var y=0;y<h;y++){
+    for(var x=0;x<w;x++){
+      var edge = (x===0||y===0||x===w-1||y===h-1);
+      var color = edge ? 0xEDEDED : 0xFFFFFF;
+      putPixel((cx+x)|0, (cy+y)|0, color);
+    }
+  }
+}
+
+/* house palette presets */
+var HOUSE_PALETTE = {
+  wood:  { wall:0xC98F5A, plankDark:0xB17846, roof:0x6B4A2E, door:0x3F2B1B, win:0xFFF3A3, frame:0x4B3A23 },
+  stone: { wall:0xD6D6D6, plankDark:0xBEBEBE, roof:0x5E6E7B, door:0x394653, win:0xDDF1FF, frame:0x2E3B45 },
+  modern:{ wall:0xFFFFFF, plankDark:0xEDEDED, roof:0x567D2C, door:0x2D1C4A, win:0xCFE8FF, frame:0x2D1C4A }
+};
+
 /* ================= WORLD GEN ================= */
 function setCategory(kind){
   CATEGORY = (kind==='deals')?'deals':'events';
@@ -516,12 +539,28 @@ function setCategory(kind){
 
 function buildHouses(){
   houses = [];
-  var x = 40; var gap = 110; // logical pixels in 256x160 space
-  for (var i=0;i<ITEMS.length;i++){
-    houses.push({ id:ITEMS[i].id, title:ITEMS[i].title, when:ITEMS[i].when, x:x });
-    x += gap;
+  var x = 40;               // logical pixels in 256x160 space
+  var gap = 110;            // base distance between houses
+  var list = (CATEGORY==='events'?EVENTS:DEALS);
+
+  for (var i=0;i<list.length;i++){
+    var it = list[i];
+    var seed = hashId(it.id).length; // simple numeric-ish seed
+    var variantPick = ['wood','stone','modern'][rndi(seed,0,2)];
+    // width 28..42, height 18..28 (coherent proportions)
+    var w = rndi(seed+7, 28, 42);
+    var h = rndi(seed+11, 18, 28);
+    // window layout 0..2 rows, 1..3 columns
+    var winRows = rndi(seed+23, 0, 2);
+    var winCols = rndi(seed+29, 1, 3);
+    houses.push({
+      id:it.id, title:it.title, when:it.when,
+      x:x, w:w, h:h, variant:variantPick, seed:seed,
+      winRows:winRows, winCols:winCols
+    });
+    x += gap + rndi(seed+3, -10, 18); // vary spacing a bit
   }
-  worldW = Math.max(256, (houses.length? houses[houses.length-1].x + 120 : 256));
+  worldW = Math.max(256, (houses.length ? houses[houses.length-1].x + 120 : 256));
 }
 
 function findById(id){
@@ -529,7 +568,7 @@ function findById(id){
   return null;
 }
 
-/* ================= RENDER (8-bit) ================= */
+/* ================= RENDER (blue sky, clouds, green grass, varied houses) ================= */
 function loop(){
   update();
   render();
@@ -557,93 +596,117 @@ function update(){
 }
 
 function render(){
-  // clear to green LCD
-  fillRect(0,0,canvas.width,canvas.height, 0x9bbc0f);
-
-  // sky dots
-  for (var i=0;i<canvas.width;i+=16){
-    putPixel(i+((Date.now()/150|0)%16), 10+(i%9), 0x6b8a0c);
+  // --- Sky gradient (light to medium blue) ---
+  var skyTop = 0xCFEAFF;   // light
+  var skyMid = 0xA9D8FF;   // mid
+  var skyBot = 0x8CC7FF;   // deeper
+  for (var y=0; y<120; y++){
+    var t = y/120;
+    var hex =
+      (t<0.5) ? skyLerp(skyTop, skyMid, t/0.5)
+              : skyLerp(skyMid, skyBot, (t-0.5)/0.5);
+    horizLine(0,y,canvas.width,hex);
   }
 
-  // ground band
-  fillRect(0,120,canvas.width,40, 0x6b8a0c);
-  for (var y=120;y<160;y+=2) horizLine(0,y,canvas.width, (y%4===0)?0x4e7012:0x6b8a0c);
-
-  // houses
-  for (var i=0;i<houses.length;i++){
-    drawHouse(houses[i].x - cameraX, 120, houses[i].title);
+  // --- Moving clouds ---
+  var tMs = Date.now();
+  for (var i=0;i<8;i++){
+    var s = 0.8 + ((i%3)*0.4);
+    var speed = 0.03 + (i%3)*0.015;
+    var cx = ((i*80) - ((tMs*speed)|0)) % (canvas.width+120) - 60;
+    var cy = 12 + (i%4)*18;
+    drawCloud(cx, cy, s);
+    drawCloud(cx+12, cy+3, s*0.9);
+    drawCloud(cx+26, cy+1, s*0.7);
   }
 
-  // player
+  // --- Grass ground ---
+  var grass = 0x76C86A;       // main grass green
+  var stripe = 0x5EAF55;      // darker stripes
+  fillRect(0,120,canvas.width,40, grass);
+  for (var yy=120; yy<160; yy+=2){
+    horizLine(0,yy,canvas.width, (yy%4===0)?stripe:grass);
+  }
+
+  // --- Houses (varied) ---
+  for (var j=0;j<houses.length;j++){
+    drawHouseVar(houses[j], cameraX);
+  }
+
+  // --- Player ---
   drawPlayer(Math.round(player.x - cameraX), Math.round(player.y));
 }
 
-function drawHouse(baseX, groundY, title){
-  // body
-  var w=32, h=20;
+function skyLerp(a,b,t){
+  var ar=(a>>16)&255, ag=(a>>8)&255, ab=a&255;
+  var br=(b>>16)&255, bg=(b>>8)&255, bb=b&255;
+  var rr = (ar + (br-ar)*t)|0;
+  var gg = (ag + (bg-ag)*t)|0;
+  var bb2= (ab + (bb-ab)*t)|0;
+  return (rr<<16)|(gg<<8)|bb2;
+}
+
+function drawHouseVar(h, camX){
+  var baseX = h.x - camX;
+  var groundY = 120;
+  var w = h.w, hh = h.h;
   var x = baseX - Math.floor(w/2);
-  var y = groundY - h;
-  fillRect(x,y,w,h, 0xdde67a); // light wall
-  // door
-  fillRect(x+Math.floor(w/2)-3, y+h-10, 6, 10, 0x3a4a10);
-  // roof
-  tri(x-2, y, x+w+2, y, x+Math.floor(w/2), y-10, 0x567d2c);
-  // title as pixel text (clamped to width)
-  pixelText(title.toUpperCase(), x-1, y-12, 0x224b0f, 16);
-}
+  var y = groundY - hh;
 
-function drawPlayer(x,y){
-  // simple 8-bit sprite
-  // head
-  fillRect(x-1, y-12, 6, 4, 0xf2c199);
-  // body
-  fillRect(x-2, y-8, 8, 6, 0x6332c8);
-  // legs
-  fillRect(x-1, y-2, 2, 2, 0x000000);
-  fillRect(x+2, y-2, 2, 2, 0x000000);
-}
+  var pal = HOUSE_PALETTE[h.variant] || HOUSE_PALETTE.wood;
 
-function nudge(dir){ player.vx = dir*speed; setTimeout(function(){ if ((dir<0 && player.vx<0) || (dir>0 && player.vx>0)) player.vx=0; }, 120); }
+  // WALL
+  fillRect(x, y, w, hh, pal.wall);
 
-/* ======== Tiny 8-bit draw helpers (no external libs) ======== */
-function putPixel(x,y,hex){
-  ctx.fillStyle = '#'+hex.toString(16).padStart(6,'0');
-  ctx.fillRect(x|0, y|0, 1, 1);
-}
-function fillRect(x,y,w,h,hex){
-  ctx.fillStyle = '#'+hex.toString(16).padStart(6,'0');
-  ctx.fillRect(x|0, y|0, w|0, h|0);
-}
-function horizLine(x,y,len,hex){ fillRect(x,y,len,1,hex); }
-function tri(x1,y1,x2,y2,x3,y3,hex){
-  ctx.fillStyle = '#'+hex.toString(16).padStart(6,'0');
-  ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.lineTo(x3,y3); ctx.closePath(); ctx.fill();
-}
-
-/* Pixel text: very tiny 3x5 font */
-var FONT = {
-  A:["010","101","111","101","101"], B:["110","101","110","101","110"], C:["011","100","100","100","011"],
-  D:["110","101","101","101","110"], E:["111","100","110","100","111"], F:["111","100","110","100","100"],
-  G:["011","100","101","101","011"], H:["101","101","111","101","101"], I:["111","010","010","010","111"],
-  J:["001","001","001","101","010"], K:["101","101","110","101","101"], L:["100","100","100","100","111"],
-  M:["101","111","111","101","101"], N:["101","111","111","111","101"], O:["010","101","101","101","010"],
-  P:["110","101","110","100","100"], Q:["010","101","101","111","011"], R:["110","101","110","101","101"],
-  S:["011","100","010","001","110"], T:["111","010","010","010","010"], U:["101","101","101","101","111"],
-  V:["101","101","101","101","010"], W:["101","101","111","111","101"], X:["101","101","010","101","101"],
-  Y:["101","101","010","010","010"], Z:["111","001","010","100","111"], " ":[ "000","000","000","000","000" ]
-};
-function pixelText(s, x, y, color, maxWidth){
-  var px = x, py = y, w = 4; // 3 wide + 1 space
-  var chars = Math.min(Math.floor((maxWidth||1000)/w), s.length);
-  for (var i=0;i<chars;i++){
-    var ch = s[i];
-    var g = FONT[ch] || FONT[" "];
-    for (var r=0;r<5;r++){
-      var row = g[r];
-      for (var c=0;c<3;c++) if (row[c]==='1') putPixel(px+c, py+r, color);
+  // WOOD PLANKS subtle animation (shift every ~500ms)
+  if (h.variant === 'wood'){
+    var phase = ((Date.now()/500)|0) % 2;
+    for (var py=0; py<hh; py+=3){
+      horizLine(x, y+py+phase, w, pal.plankDark);
     }
-    px += w;
+  } else if (h.variant === 'stone'){
+    // stone blocks – staggered rows
+    for (var ry=0; ry<hh; ry+=4){
+      var offset = (ry%8===0)?0:2;
+      for (var rx=0; rx<w; rx+=6){
+        fillRect(x+rx+offset, y+ry, 4, 3, pal.plankDark);
+      }
+    }
   }
+
+  // ROOF (triangle)
+  tri(x-2, y, x+w+2, y, x+Math.floor(w/2), y- Math.max(8, (w/3)|0), pal.roof);
+
+  // DOOR
+  var dW = Math.max(6, (w/6)|0), dH = Math.max(10, (hh/2)|0);
+  fillRect(x+Math.floor(w/2)-Math.floor(dW/2), y+hh-dH, dW, dH, pal.door);
+
+  // WINDOWS
+  var winGapX = Math.max(3, (w/(h.winCols+1))|0);
+  var winGapY = Math.max(5, (hh/(h.winRows+3))|0);
+  var winW = Math.max(4, (w/8)|0), winH = Math.max(4, (hh/6)|0);
+  var flick = ((Date.now()/700)|0) % 2;
+
+  for (var r=0; r<h.winRows; r++){
+    for (var c=0; c<h.winCols; c++){
+      var wx = x + winGapX*(c+1) - Math.floor(winW/2);
+      var wy = y + winGapY*(r+1);
+      var lit = ((r+c+flick+h.seed)%2===0);
+      var winColor = lit ? pal.win : 0xAAC7E0;
+      fillRect(wx, wy, winW, winH, winColor);                // pane
+      // frame
+      horizLine(wx-1, wy-1, winW+2, pal.frame);
+      horizLine(wx-1, wy+winH, winW+2, pal.frame);
+      fillRect(wx-1, wy-1, 1, winH+2, pal.frame);
+      fillRect(wx+winW, wy-1, 1, winH+2, pal.frame);
+      // mullion
+      fillRect(wx+Math.floor(winW/2), wy, 1, winH, pal.frame);
+      horizLine(wx, wy+Math.floor(winH/2), winW, pal.frame);
+    }
+  }
+
+  // TITLE on roof (pixel text, clamped)
+  pixelText(h.title.toUpperCase(), x, y - 12, 0x0E390E, Math.min(w, 48));
 }
 
 /* ================= ENTER / MODAL ================= */
@@ -735,8 +798,50 @@ function makeIcs(item){
 function esc(s){ return String(s).replace(/([,;])/g,'\\$1').replace(/\n/g,'\\n'); }
 function parseWhen(str){ var m=String(str||'').toLowerCase().match(/today\s+(\d{1,2}):(\d{2})/); if(!m) return null; var h=+m[1], mi=+m[2]; var n=new Date(); return new Date(n.getFullYear(),n.getMonth(),n.getDate(),h,mi,0,0); }
 
+/* ================= DRAW HELPERS ================= */
+function putPixel(x,y,hex){
+  ctx.fillStyle = '#'+hex.toString(16).padStart(6,'0');
+  ctx.fillRect(x|0, y|0, 1, 1);
+}
+function fillRect(x,y,w,h,hex){
+  ctx.fillStyle = '#'+hex.toString(16).padStart(6,'0');
+  ctx.fillRect(x|0, y|0, w|0, h|0);
+}
+function horizLine(x,y,len,hex){ fillRect(x,y,len,1,hex); }
+function tri(x1,y1,x2,y2,x3,y3,hex){
+  ctx.fillStyle = '#'+hex.toString(16).padStart(6,'0');
+  ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.lineTo(x3,y3); ctx.closePath(); ctx.fill();
+}
+
+/* Pixel text: very tiny 3x5 font */
+var FONT = {
+  A:["010","101","111","101","101"], B:["110","101","110","101","110"], C:["011","100","100","100","011"],
+  D:["110","101","101","101","110"], E:["111","100","110","100","111"], F:["111","100","110","100","100"],
+  G:["011","100","101","101","011"], H:["101","101","111","101","101"], I:["111","010","010","010","111"],
+  J:["001","001","001","101","010"], K:["101","101","110","101","101"], L:["100","100","100","100","111"],
+  M:["101","111","111","101","101"], N:["101","111","111","111","101"], O:["010","101","101","101","010"],
+  P:["110","101","110","100","100"], Q:["010","101","101","111","011"], R:["110","101","110","101","101"],
+  S:["011","100","010","001","110"], T:["111","010","010","010","010"], U:["101","101","101","101","111"],
+  V:["101","101","101","101","010"], W:["101","101","111","111","101"], X:["101","101","010","101","101"],
+  Y:["101","101","010","010","010"], Z:["111","001","010","100","111"], " ":[ "000","000","000","000","000" ]
+};
+function pixelText(s, x, y, color, maxWidth){
+  var px = x, py = y, w = 4; // 3 wide + 1 space
+  var chars = Math.min(Math.floor((maxWidth||1000)/w), s.length);
+  for (var i=0;i<chars;i++){
+    var ch = s[i];
+    var g = FONT[ch] || FONT[" "];
+    for (var r=0;r<5;r++){
+      var row = g[r];
+      for (var c=0;c<3;c++) if (row[c]==='1') putPixel(px+c, py+r, color);
+    }
+    px += w;
+  }
+}
+
 /* ================= UTILS ================= */
 function hashId(s){ var h=0; for (var i=0;i<s.length;i++){ h=((h<<5)-h)+s.charCodeAt(i); h|=0; } return 'sb_'+Math.abs(h); }
+function nudge(dir){ player.vx = dir*speed; setTimeout(function(){ if ((dir<0 && player.vx<0) || (dir>0 && player.vx>0)) player.vx=0; }, 120); }
 </script>
 </body>
 </html>
