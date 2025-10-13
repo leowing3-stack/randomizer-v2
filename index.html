@@ -238,6 +238,15 @@
 /* ================= BASIC CONFIG ================= */
 var CSV_URL = "https://docs.google.com/spreadsheets/d/<SHEET_ID>/pub?gid=<GID_TODAY>&single=true&output=csv";
 var TILE = 16, GROUND_Y = 120;
+/* PATCH START: physics + input state */
+var PHYS = {
+  accel: 12,         // px/s^2
+  decel: 18,         // px/s^2 when no input
+  maxSpeed: 40,      // px/s horizontal
+  deadzone: 36       // camera deadzone half-width (px)
+};
+var keys = { left:false, right:false, up:false };
+/* PATCH END */
 
 /* ================= ELEMENTS ================= */
 var canvas = document.getElementById('screen');
@@ -319,24 +328,37 @@ function wireUI(){
   tabEvents.onclick=function(){ setCategory('events'); };
   tabDeals.onclick=function(){ setCategory('deals'); };
 
-  dLeft.onclick=function(){ nudge(-1); };
-  dRight.onclick=function(){ nudge(1); };
-  dUp.onclick=tryEnter;
+ /* PATCH START: dpad continuous press */
+  function hold(el, on, off){
+    var down=false, id=null;
+    var start=function(e){ e.preventDefault(); down=true; on(); };
+    var stop=function(e){ e && e.preventDefault(); if(down){ down=false; off(); } };
+    el.addEventListener('mousedown', start);
+    el.addEventListener('touchstart', start, {passive:false});
+    window.addEventListener('mouseup', stop);
+    window.addEventListener('touchend', stop);
+    window.addEventListener('touchcancel', stop);
+  }
+  hold(dLeft,  function(){ keys.left=true; },  function(){ keys.left=false; });
+  hold(dRight, function(){ keys.right=true; }, function(){ keys.right=false; });
+  dUp.addEventListener('click', function(e){ e.preventDefault(); tryEnter(); });
+/* PATCH END */
 
   btnA.onclick=function(){ if (canEnterId){ var it=getById(canEnterId); if(it) openDetails(it);} };
   btnB.onclick=function(){ if (currentOpen) saveItem(currentOpen); };
 
+  /* PATCH START: keyboard -> keys state */
   document.addEventListener('keydown', function(e){
     if (modalBackdrop.style.display==='flex'){
       if (e.key==='Escape') closeModal();
       if (e.key==='b'||e.key==='B'){ if(currentOpen) saveItem(currentOpen); }
       return;
     }
-    if (e.key==='ArrowLeft'){ player.vx=-1.8; player.facing=-1; }
-    if (e.key==='ArrowRight'){ player.vx= 1.8; player.facing= 1; }
-    if (e.key==='ArrowUp' || e.key==='Enter') tryEnter();
+    if (e.key==='ArrowLeft' || e.key==='a' || e.key==='A') keys.left = true;
+    if (e.key==='ArrowRight'|| e.key==='d' || e.key==='D') keys.right= true;
+    if (e.key==='ArrowUp'   || e.key==='w' || e.key==='W' || e.key==='Enter') keys.up=true;
 
-    /* Tweak mode bindings */
+    // Tweak mode (unchanged)
     if (e.key==='t' || e.key==='T'){ tweak.on=!tweak.on; document.querySelector('.screen-inner').classList.toggle('tweak-on', tweak.on); }
     if (!tweak.on) return;
     if (e.key==='['){ cycleTile(-1); }
@@ -345,9 +367,11 @@ function wireUI(){
     if (num>=0) pickKey(num);
   });
   document.addEventListener('keyup', function(e){
-    if (e.key==='ArrowLeft' && player.vx<0) player.vx=0;
-    if (e.key==='ArrowRight'&& player.vx>0) player.vx=0;
+    if (e.key==='ArrowLeft' || e.key==='a' || e.key==='A') keys.left = false;
+    if (e.key==='ArrowRight'|| e.key==='d' || e.key==='D') keys.right= false;
+    if (e.key==='ArrowUp'   || e.key==='w' || e.key==='W' || e.key==='Enter') keys.up=false;
   });
+/* PATCH END */
 
   btnSaved.onclick=toggleSavedPanel;
   savedClose.onclick=function(){ setSavedPanel(false); };
@@ -519,33 +543,75 @@ function buildParallax(){
 }
 
 /* ================= GAME LOOP ================= */
+/* PATCH START: dt loop + acceleration physics */
+var _lastT = performance.now();
 function loop(){
-  update();
+  var now = performance.now();
+  var dt  = Math.min(0.05, (now - _lastT) / 1000); // clamp 50ms
+  _lastT = now;
+
+  update(dt);
   render();
   requestAnimationFrame(loop);
 }
-function update(){
-  if (player.vx!==0){ player.step=(player.step+1)%16; }
-  player.x += player.vx;
+
+function update(dt){
+  // — input → target velocity
+  var ax = 0;
+  if (keys.left && !keys.right)  ax = -PHYS.accel;
+  else if (keys.right && !keys.left) ax =  PHYS.accel;
+
+  // integrate velocity with accel/decel
+  if (ax!==0){
+    player.vx += ax * dt;
+  } else {
+    // friction
+    if (player.vx > 0){ player.vx = Math.max(0, player.vx - PHYS.decel*dt); }
+    else if (player.vx < 0){ player.vx = Math.min(0, player.vx + PHYS.decel*dt); }
+  }
+  // clamp
+  if (player.vx >  PHYS.maxSpeed) player.vx =  PHYS.maxSpeed;
+  if (player.vx < -PHYS.maxSpeed) player.vx = -PHYS.maxSpeed;
+  if (player.vx!==0) player.facing = (player.vx>0?1:-1);
+
+  // integrate position
+  player.x += player.vx * dt;
+
+  // bounds
   if (player.x<0) player.x=0;
   if (player.x>worldW-8) player.x=worldW-8;
 
-  cameraX = Math.round(player.x - (canvas.width/2));
+  // simple walk animation timer
+  if (Math.abs(player.vx)>1) { player.step = (player.step + 10*dt) % 2; } else { player.step = 0; }
+
+  // camera with deadzone
+  var cxTarget = player.x - canvas.width/2;
+  var leftDZ  = (player.x - PHYS.deadzone) - canvas.width/2;
+  var rightDZ = (player.x + PHYS.deadzone) - canvas.width/2;
+
+  if (cameraX > leftDZ)  cameraX -= Math.min(80*dt, cameraX - leftDZ);
+  if (cameraX < rightDZ) cameraX += Math.min(80*dt, rightDZ - cameraX);
+
   if (cameraX<0) cameraX=0;
   if (cameraX>worldW-canvas.width) cameraX=worldW-canvas.width;
 
-  // parallax scroll
-  parallax.cloudsNearX += 0.3;
-  parallax.cloudsFarX  -= 0.15;
+  // parallax scroll (time based)
+  parallax.cloudsNearX += 20*dt;
+  parallax.cloudsFarX  -= 10*dt;
   parallax.treeX = cameraX*0.5;
 
-  // enter detection
+  // enter detection (near door)
   var aligned=null;
   for (var i=0;i<houses.length;i++){
-    if (Math.abs(houses[i].x - player.x) < 10){ aligned=houses[i]; break; }
+    var door = doorXFor(houses[i]);
+    if (Math.abs(door - player.x) < 8){ aligned=houses[i]; break; }
   }
   if (aligned){ canEnterId=aligned.id; hintEl.classList.add('show'); } else { canEnterId=null; hintEl.classList.remove('show'); }
+
+  // up key = enter (edge-trigger)
+  if (keys.up && canEnterId){ tryEnter(); keys.up=false; }
 }
+/* PATCH END */
 
 /* ================= RENDER ================= */
 function render(){
@@ -588,7 +654,16 @@ function drawCloudLayer(tileIdx, scroll, y, speed){
     drawTileIndex(tileIdx, x, y);
   }
 }
-
+/* PATCH START: doorX helper */
+function doorXFor(h){
+  // crude door placement per kind; tweak if art changes
+  var half = h.w/2;
+  if (h.kind==='cabin')   return h.x - half + TILE*1.5;
+  if (h.kind==='cottage') return h.x + half - TILE*1.5;
+  // windmill center-ish
+  return h.x;
+}
+/* PATCH END */
 function drawTreeline(){
   // use the tree tile as repeated silhouettes (darken via globalAlpha)
   ctx.save();
@@ -638,18 +713,23 @@ function drawBuilding(h){
   pixelText(h.title.toUpperCase(), x, y-10, 0x143C0D, h.w);
 }
 
-function drawPlayer(x,y){
+/* PATCH START: better placeholder player */
   // shadow
-  fillRect(x-2, y, 6, 1, 0x2b1b30);
-  // try to draw sprite from tilesheet (single 16x16 tile index)
+  fillRect(x-3, y, 8, 1, 0x2b1b30);
+
+  // use tilesheet frame if mapped
   if (typeof map.player === 'number'){ drawTileIndex(map.player, x-4, y-16); return; }
-  // fallback (if mapping not set) draw simple pixels
-  fillRect(x, y-12, 4, 4, 0xf2c199); // head
-  fillRect(x-1, y-8, 6, 6, 0x6332c8); // body
-  var alt = (player.step<8)?0:1; if (player.facing<0) alt=-alt;
-  fillRect(x-1-alt, y-2, 2, 2, 0x000000);
-  fillRect(x+2+alt, y-2, 2, 2, 0x000000);
-}
+
+  // fallback pixel dude (wobble when walking)
+  var wob = (player.step>1?1:0) * (player.facing>0?1:-1);
+  // head
+  fillRect(x-2, y-14, 6, 5, 0xf2c199);
+  // body
+  fillRect(x-3, y-9,  8, 6, 0x6332c8);
+  // legs
+  fillRect(x-3+wob, y-3, 3, 3, 0x222222);
+  fillRect(x+2-wob, y-3, 3, 3, 0x222222);
+/* PATCH END */
 
 /* ---------- UI: ENTER / MODAL ---------- */
 function tryEnter(){
