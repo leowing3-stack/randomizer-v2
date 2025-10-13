@@ -239,13 +239,13 @@
 var CSV_URL = "https://docs.google.com/spreadsheets/d/<SHEET_ID>/pub?gid=<GID_TODAY>&single=true&output=csv";
 var TILE = 16, GROUND_Y = 120;
 var PHYS = {
-  walkSpeed: 60,        // px/s
-  deadzone: 36,         // camera deadzone half-width (px)
-  gravity: 900,         // px/s^2 (tweak feel)
-  jumpVel: 280,         // px/s upward (impulse)
-  termVel: 600,         // clamp fall speed
-  coyoteTime: 0.08,     // seconds after leaving ground you can still jump
-  jumpBuffer: 0.12      // seconds before landing to queue a jump
+  walkSpeed: 60,
+  deadzone: 36,
+  gravity: 900,     // leave this
+  jumpVel: 360,     // was 280; ~72px max rise
+  termVel: 700,     // a touch higher fall cap so the arc still feels good
+  coyoteTime: 0.08,
+  jumpBuffer: 0.12
 };
 /* PATCH START: define keys state */
 var keys = { left:false, right:false, up:false, jump:false };
@@ -337,8 +337,12 @@ function doJump(){
   player.vy = -PHYS.jumpVel;
   player.grounded = false;
   player.coyote = 0;
-  anim.state = "jump";
+  setAnim("jump");                 // reset anim clock on takeoff
   anim.playedJumpOnce = false;
+
+  // SMALL forward carry if moving
+  if (player.vx !== 0) player.vx = player.facing * (PHYS.walkSpeed + 10);
+}
 
 function landOn(surfaceY){
   player.y = surfaceY;
@@ -348,10 +352,6 @@ function landOn(surfaceY){
   }
   player.coyote = PHYS.coyoteTime;
   setAnim((player.vx !== 0) ? "walk" : "idle");
-}
-
-  // SMALL forward carry if moving
-if (player.vx !== 0) player.vx = player.facing * (PHYS.walkSpeed + 10);
 }
 /* Parallax */
 var parallax = { cloudsNearX:0, cloudsFarX:0, treeX:0 };
@@ -641,7 +641,7 @@ function setCategory(kind){
 
   ITEMS=(CATEGORY==='events'?EVENTS:DEALS).slice();
   buildScene();
-  player.x=16; cameraX=0; canEnterId=null;
+  player.x=16; cameraX=0; cameraY=0; canEnterId=null;
 }
 
 function buildScene(){
