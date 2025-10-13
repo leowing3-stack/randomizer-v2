@@ -29,196 +29,128 @@
     --white:#ffffff;
     --black:#000000;
 
-    --shell:#6a2ee0;           /* Game Boy shell (SocialBurst purple variant) */
+    --shell:#6a2ee0;
     --shell-dark:#4f22a8;
     --shell-light:#8d5bf0;
-    --screen:#9bbc0f;          /* kept for bezel label tone */
-    --screen-dark:#306230;
-    --screen-edge:#567d2c;
-    --ink:#0f0f12;
-    --ink-2:#3a3a44;
 
     --radius:22px;
     --shadow:0 18px 40px rgba(0,0,0,.28);
   }
 
-  * { box-sizing: border-box; }
-  html, body { height:100%; }
+  *{box-sizing:border-box}
+  html,body{height:100%}
   body{
     margin:0;
     background: radial-gradient(1200px 600px at 50% -20%, #eee, #d8d8ff 60%, #c7c7ff 100%);
-    color:var(--ink);
+    color:#0f0f12;
     font-family: Lexend, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial;
     overflow:hidden;
   }
 
-  /* Top brand bar (subtle) */
   header.topbar{
     position:fixed; top:8px; left:8px; right:8px; z-index:50;
     display:flex; align-items:center; gap:10px;
     background:rgba(255,255,255,0.7); backdrop-filter:blur(6px);
     border:1px solid rgba(0,0,0,.08); border-radius:12px; padding:6px 10px;
   }
-  .brand{ display:flex; align-items:center; gap:8px; }
-  .brand img{ width:32px; height:32px; }
-  .brand .name{ font-family: BrotherBold, sans-serif; color:var(--purple); font-size:18px; }
-  .spacer{ flex:1; }
+  .brand{display:flex; align-items:center; gap:8px}
+  .brand img{width:32px; height:32px}
+  .brand .name{font-family:BrotherBold, sans-serif; color:var(--purple); font-size:18px}
+  .spacer{flex:1}
   .saved-btn{
     display:inline-flex; align-items:center; gap:8px; border:2px solid var(--purple);
     border-radius:999px; padding:6px 10px; background:transparent; color:var(--purple); font-weight:800; cursor:pointer;
   }
   .badge{
-    min-width:20px; height:20px; padding:0 6px; border-radius:999px; background:var(--yellow); color:var(--black);
+    min-width:20px; height:20px; padding:0 6px; border-radius:999px; background:var(--yellow); color:#000;
     display:inline-flex; align-items:center; justify-content:center; font-size:12px; font-weight:800;
   }
 
-  /* GAME BOY SHELL */
   .wrap{
     height:100%; width:100%; display:grid; place-items:center; padding:60px 16px 24px;
   }
   .gb{
     position:relative;
     width:min(920px, 94vw);
-    aspect-ratio: 3/5; /* portrait handset */
+    aspect-ratio: 3/5;
     background: linear-gradient(145deg, var(--shell-light), var(--shell) 40%, var(--shell-dark) 100%);
-    border-radius: 36px;
+    border-radius:36px;
     box-shadow: var(--shadow);
-    border: 6px solid #2c0d76;
+    border:6px solid #2c0d76;
   }
   .gb::after{
-    /* subtle top highlight */
     content:""; position:absolute; inset:0; border-radius:36px; pointer-events:none;
     box-shadow: inset 0 18px 32px rgba(255,255,255,0.18), inset 0 -18px 28px rgba(0,0,0,0.18);
   }
 
-  /* SCREEN WINDOW */
-  .screen-bezel{
-    position:absolute; left:6%; right:6%; top:7%;
-    aspect-ratio: 5/3;
-    background: linear-gradient(180deg, #222, #111 60%, #000);
-    border-radius: 22px; padding:14px; box-shadow: inset 0 0 0 2px #000;
-  }
-  .screen{
-    position:relative; width:100%; height:100%;
-    background: var(--screen-edge);
-    border-radius: 12px;
-    display:grid; place-items:center;
-    padding:6px;
-  }
-  .screen-inner{
-    width:100%; height:100%; background: #8CC7FF; /* actual blue, but canvas handles final scene */
-    border-radius: 8px;
-    image-rendering: pixelated; /* crispy canvas */
-    overflow:hidden;
-    position:relative;
-  }
-  canvas#screen{
-    width:100%; height:100%;
-    display:block;
-    image-rendering: pixelated;
-  }
-  .screen-label{
-    position:absolute; left:12px; bottom:10px; color:#0b2e0b; font-weight:900; font-size:12px; opacity:.6;
-  }
-
-  /* LOGO badge on the shell */
   .logo-badge{
     position:absolute; left:8%; top:4%;
-    display:flex; align-items:center; gap:10px;
-    color:#fff; font-family: BrotherBold, sans-serif; letter-spacing:.4px;
-    text-shadow: 0 1px 0 rgba(0,0,0,.35);
+    display:flex; align-items:center; gap:10px; color:#fff;
+    font-family:BrotherBold, sans-serif; letter-spacing:.4px; text-shadow:0 1px 0 rgba(0,0,0,.35);
   }
-  .logo-badge img{ width:32px; height:32px; filter: drop-shadow(0 1px 0 rgba(0,0,0,.4)); }
+  .logo-badge img{width:32px; height:32px; filter: drop-shadow(0 1px 0 rgba(0,0,0,.4));}
 
-  /* CATEGORY TOGGLER */
   .toggle{
     position:absolute; right:8%; top:4%;
-    display:inline-flex; border:2px solid #fff; border-radius:999px; overflow:hidden;
-    box-shadow:0 2px 0 rgba(0,0,0,.18);
+    display:inline-flex; border:2px solid #fff; border-radius:999px; overflow:hidden; box-shadow:0 2px 0 rgba(0,0,0,.18);
   }
   .toggle button{
     padding:6px 12px; border:none; background:transparent; color:#fff; font-weight:900; cursor:pointer;
   }
-  .toggle button[aria-pressed="true"]{ background:#fff; color:var(--shell-dark); }
+  .toggle button[aria-pressed="true"]{ background:#fff; color:#301873; }
 
-  /* D-PAD (up, left, right only) */
+  .screen-bezel{
+    position:absolute; left:6%; right:6%; top:7%;
+    aspect-ratio: 5/3;
+    background: linear-gradient(180deg, #222, #111 60%, #000);
+    border-radius:22px; padding:14px; box-shadow: inset 0 0 0 2px #000;
+  }
+  .screen{
+    position:relative; width:100%; height:100%; border-radius:12px; display:grid; place-items:center; padding:6px;
+  }
+  .screen-inner{
+    width:100%; height:100%; background:#8CC7FF; border-radius:8px; image-rendering:pixelated; overflow:hidden; position:relative;
+  }
+  canvas#screen{width:100%; height:100%; display:block; image-rendering:pixelated}
+  .screen-label{position:absolute; left:12px; bottom:10px; color:#0b2e0b; font-weight:900; font-size:12px; opacity:.6}
+  .hint{position:absolute; top:6px; right:8px; z-index:5; background:#0b2e0b; color:#b6d64b; border:2px solid #215a21; border-radius:6px; padding:4px 6px; font-weight:900; font-size:12px; display:none}
+  .hint.show{display:block}
+
   .dpad{
-    position:absolute; left:11%; bottom:10%;
-    width:160px; height:160px;
-    display:grid; place-items:center;
+    position:absolute; left:11%; bottom:10%; width:160px; height:160px; display:grid; place-items:center;
   }
-  .stem{
-    position:absolute; background:#24104b; border:3px solid #0b0223; border-radius:12px;
-    box-shadow: inset 0 0 0 2px rgba(255,255,255,0.06), 0 4px 0 rgba(0,0,0,0.25);
-  }
-  .stem.vert{ width:56px; height:160px; }
-  .stem.horz{ width:160px; height:56px; }
-  .d-btn{
-    position:absolute; width:56px; height:56px; background: radial-gradient(circle at 35% 35%, #3a1b7a, #230c53);
-    border:2px solid #0b0223; border-radius:10px; color:#fff; font-weight:900; cursor:pointer;
-    display:grid; place-items:center; box-shadow:0 3px 0 rgba(0,0,0,.35);
-  }
-  .d-btn:active{ transform:translateY(1px); }
-  .d-up{ top:0; left:52px; }
-  .d-left{ left:0; top:52px; }
-  .d-right{ right:0; top:52px; }
-  .d-btn span{ transform: translateY(-1px); }
+  .stem{position:absolute; background:#24104b; border:3px solid #0b0223; border-radius:12px; box-shadow: inset 0 0 0 2px rgba(255,255,255,0.06), 0 4px 0 rgba(0,0,0,0.25)}
+  .stem.vert{width:56px; height:160px}
+  .stem.horz{width:160px; height:56px}
+  .d-btn{position:absolute; width:56px; height:56px; background: radial-gradient(circle at 35% 35%, #3a1b7a, #230c53); border:2px solid #0b0223; border-radius:10px; color:#fff; font-weight:900; cursor:pointer; display:grid; place-items:center; box-shadow:0 3px 0 rgba(0,0,0,.35)}
+  .d-btn:active{transform:translateY(1px)}
+  .d-up{top:0; left:52px}
+  .d-left{left:0; top:52px}
+  .d-right{right:0; top:52px}
+  .d-btn span{transform:translateY(-1px)}
 
-  /* A/B buttons repurposed as “Details” & “Save” (optional) */
-  .ab{
-    position:absolute; right:11%; bottom:12%;
-    display:flex; gap:16px; align-items:center;
-  }
-  .round{
-    width:64px; height:64px; border-radius:50%;
-    background: radial-gradient(circle at 35% 35%, #ffd94d, #c0a300);
-    border:3px solid #6a5c00; box-shadow:0 4px 0 rgba(0,0,0,.35);
-    font-weight:900; color:#000; display:grid; place-items:center; cursor:pointer;
-  }
-  .round:active{ transform: translateY(1px); }
+  .ab{position:absolute; right:11%; bottom:12%; display:flex; gap:16px; align-items:center}
+  .round{width:64px; height:64px; border-radius:50%; background: radial-gradient(circle at 35% 35%, #ffd94d, #c0a300); border:3px solid #6a5c00; box-shadow:0 4px 0 rgba(0,0,0,.35); font-weight:900; color:#000; display:grid; place-items:center; cursor:pointer}
+  .round:active{transform:translateY(1px)}
 
-  /* Saved drawer & modal (unchanged) */
   #saved-panel{
-    position:fixed; right:0; top:0; height:100%; width:min(92vw,420px);
-    background:#fff; color:var(--ink); border-left:1px solid rgba(0,0,0,.08);
-    transform:translateX(100%); transition:transform .25s ease; z-index:120; display:grid; grid-template-rows:auto 1fr;
+    position:fixed; right:0; top:0; height:100%; width:min(92vw,420px); background:#fff; color:#0f0f12;
+    border-left:1px solid rgba(0,0,0,.08); transform:translateX(100%); transition:transform .25s ease; z-index:120; display:grid; grid-template-rows:auto 1fr;
   }
-  #saved-panel.open{ transform:translateX(0); }
-  #saved-panel header{ display:flex; align-items:center; justify-content:space-between; padding:14px 16px; border-bottom:1px solid rgba(0,0,0,.08); }
-  #saved-list{ overflow:auto; padding:12px; display:grid; gap:10px; }
-  .saved-item{ border:1px solid rgba(0,0,0,.12); border-radius:12px; padding:12px; display:grid; gap:6px; background:#fff; }
-  .saved-item .title{ font-weight:800; color:var(--purple); }
-  .saved-item .meta{ color:var(--ink-2); font-weight:700; }
-  .saved-item .row{ display:flex; gap:8px; flex-wrap:wrap; margin-top:6px; }
-  .btn{ padding:8px 12px; border-radius:999px; border:2px solid var(--purple); background:transparent; color:var(--purple); font-weight:800; cursor:pointer; }
-  .btn.primary{ background:var(--purple); color:#fff; }
-
-  .modal-backdrop{
-    position:fixed; inset:0; background:rgba(0,0,0,.45);
-    display:none; align-items:center; justify-content:center; padding:16px; z-index:100;
-  }
-  .modal{
-    background:#fff; color:var(--ink); width:min(94vw,640px); max-height:86dvh; overflow:auto;
-    border-radius:16px; box-shadow: var(--shadow); padding:18px;
-  }
-  .modal header{ display:flex; align-items:flex-start; gap:12px; margin-bottom:8px; }
-  .modal h2{ flex:1; margin:0; font-size:22px; line-height:1.2; color:var(--purple); font-family: BrotherBold, sans-serif; }
-  .modal .close{ border:none; background:transparent; font-size:24px; line-height:1; cursor:pointer; color:#444; }
-  .modal .meta{ display:grid; gap:6px; margin:10px 0 16px; color:var(--ink-2); font-weight:700; }
-  .modal .actions{ display:flex; flex-wrap:wrap; gap:10px; margin-top:12px; }
-
-  /* Up hint overlay within screen (pixel font look) */
-  .hint{
-    position:absolute; top:6px; right:8px; z-index:5;
-    background:#0b2e0b; color:#b6d64b; border:2px solid #215a21; border-radius:6px; padding:4px 6px; font-weight:900; font-size:12px;
-    display:none;
-  }
-  .hint.show{ display:block; }
+  #saved-panel.open{transform:translateX(0)}
+  #saved-panel header{display:flex; align-items:center; justify-content:space-between; padding:14px 16px; border-bottom:1px solid rgba(0,0,0,.08)}
+  #saved-list{overflow:auto; padding:12px; display:grid; gap:10px}
+  .saved-item{border:1px solid rgba(0,0,0,.12); border-radius:12px; padding:12px; display:grid; gap:6px; background:#fff}
+  .saved-item .title{font-weight:800; color:var(--purple)}
+  .saved-item .meta{color:#3a3a44; font-weight:700}
+  .saved-item .row{display:flex; gap:8px; flex-wrap:wrap; margin-top:6px}
+  .btn{padding:8px 12px; border-radius:999px; border:2px solid var(--purple); background:transparent; color:var(--purple); font-weight:800; cursor:pointer}
+  .btn.primary{background:var(--purple); color:#fff}
 </style>
 </head>
 <body>
 
-<header class="topbar" role="banner">
+<header class="topbar">
   <div class="brand">
     <img src="./SocialBurstRandomizer/img/logo.png" alt="SocialBurst logo"/>
     <div class="name">SocialBurst</div>
@@ -239,7 +171,6 @@
       <button id="tab-deals" role="tab" aria-pressed="false" aria-selected="false">Deals</button>
     </div>
 
-    <!-- Screen -->
     <div class="screen-bezel">
       <div class="screen">
         <div class="screen-inner">
@@ -250,7 +181,6 @@
       </div>
     </div>
 
-    <!-- D-Pad -->
     <div class="dpad" aria-label="D-pad">
       <div class="stem vert"></div>
       <div class="stem horz"></div>
@@ -259,7 +189,6 @@
       <button class="d-btn d-right" id="d-right" aria-label="Right"><span>→</span></button>
     </div>
 
-    <!-- AB (optional shortcuts) -->
     <div class="ab">
       <button class="round" id="btn-details" title="Open details">A</button>
       <button class="round" id="btn-save" title="Save">B</button>
@@ -268,11 +197,11 @@
 </div>
 
 <!-- Details Modal -->
-<div id="modal-backdrop" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+<div id="modal-backdrop" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-title" style="display:none; align-items:center; justify-content:center; padding:16px; z-index:100; position:fixed; inset:0; background:rgba(0,0,0,.45);">
   <div class="modal">
     <header>
       <h2 id="modal-title">Title</h2>
-      <button id="modal-close" class="close" aria-label="Close">×</button>
+      <button id="modal-close" class="close" aria-label="Close" style="border:none; background:transparent; font-size:24px; line-height:1; cursor:pointer; color:#444;">×</button>
     </header>
     <div class="meta">
       <div id="modal-when" class="btn" style="cursor:default"></div>
@@ -299,26 +228,29 @@
 </aside>
 
 <script>
-/* ================= CONFIG ================= */
-var CSV_URL = "https://docs.google.com/spreadsheets/d/<SHEET_ID>/pub?gid=<GID_TODAY>&single=true&output=csv"; // <- replace with your Today CSV
+/* ===== CONFIG ===== */
+var CSV_URL = "https://docs.google.com/spreadsheets/d/<SHEET_ID>/pub?gid=<GID_TODAY>&single=true&output=csv";
 
-/* ================= ELEMENTS ================= */
+/* ===== ELEMENTS ===== */
 var canvas = document.getElementById('screen');
-var ctx = canvas.getContext('2d');
-ctx.imageSmoothingEnabled = false;
+var ctx = canvas.getContext('2d'); ctx.imageSmoothingEnabled = false;
+var hintEl = document.getElementById('hint');
 
 var tabEvents = document.getElementById('tab-events');
-var tabDeals = document.getElementById('tab-deals');
-var dUp = document.getElementById('d-up');
+var tabDeals  = document.getElementById('tab-deals');
+
+var dUp   = document.getElementById('d-up');
 var dLeft = document.getElementById('d-left');
-var dRight = document.getElementById('d-right');
-var hintEl = document.getElementById('hint');
+var dRight= document.getElementById('d-right');
+
+var btnA = document.getElementById('btn-details');
+var btnB = document.getElementById('btn-save');
 
 var btnSaved = document.getElementById('btn-saved');
 var savedCountEl = document.getElementById('saved-count');
 var savedPanel = document.getElementById('saved-panel');
 var savedClose = document.getElementById('saved-close');
-var savedList = document.getElementById('saved-list');
+var savedList  = document.getElementById('saved-list');
 
 var modalBackdrop = document.getElementById('modal-backdrop');
 var modalTitle = document.getElementById('modal-title');
@@ -332,145 +264,121 @@ var modalIcs = document.getElementById('modal-ics');
 var modalClose = document.getElementById('modal-close');
 var modalSave = document.getElementById('modal-save');
 
-var btnA = document.getElementById('btn-details');
-var btnB = document.getElementById('btn-save');
-
-/* ================= STATE ================= */
+/* ===== STATE ===== */
 var CATEGORY = 'events';
-var EVENTS = [];
-var DEALS = [];
-var ITEMS = [];
-var houses = [];     // [{id, x, w, h, variant, winRows, winCols, seed, title, when}]
-var player = { x: 10, y: 120, w: 8, h: 12, vx: 0 };
-var speed = 1.5;     // pixels per frame in 256x160 space
-var worldW = 256*6;  // world width
+var EVENTS=[], DEALS=[], ITEMS=[];
+var houses=[]; // {id,title,when,x,w,h,variant,winRows,winCols,seed}
+var player = { x: 12, y: 120, vx:0, step:0 };
+var speed = 1.6;
+var worldW = 256*6;
 var cameraX = 0;
 var canEnterId = null;
 var currentOpen = null;
 
-/* ================= BOOT ================= */
+/* ===== BOOT ===== */
 window.addEventListener('DOMContentLoaded', function(){
   wireUI();
   hydrate().then(function(){
     setCategory('events');
-    resizeToContainer(); // ensure crisp scaling
     updateSavedBadge();
     requestAnimationFrame(loop);
   });
 });
-window.addEventListener('resize', resizeToContainer);
-
 function wireUI(){
-  tabEvents.addEventListener('click', function(){ setCategory('events'); });
-  tabDeals.addEventListener('click', function(){ setCategory('deals'); });
+  tabEvents.onclick=function(){ setCategory('events'); };
+  tabDeals.onclick=function(){ setCategory('deals'); };
 
-  dLeft.addEventListener('click', function(){ nudge(-1); });
-  dRight.addEventListener('click', function(){ nudge(1); });
-  dUp.addEventListener('click', tryEnter);
+  dLeft.onclick=function(){ nudge(-1); };
+  dRight.onclick=function(){ nudge(1); };
+  dUp.onclick=function(){ tryEnter(); };
 
-  btnA.addEventListener('click', function(){ if (canEnterId){ var it = findById(canEnterId); if(it) openDetails(it); }});
-  btnB.addEventListener('click', function(){ if (currentOpen) saveItem(currentOpen); });
+  btnA.onclick=function(){ if (canEnterId){ var it=findById(canEnterId); if(it) openDetails(it); } };
+  btnB.onclick=function(){ if (currentOpen) saveItem(currentOpen); };
 
   document.addEventListener('keydown', function(e){
-    if (modalBackdrop.style.display === 'flex'){
-      if (e.key === 'Escape') closeModal();
-      if (e.key === 'b' || e.key === 'B') { if (currentOpen) saveItem(currentOpen); }
+    if (modalBackdrop.style.display==='flex'){
+      if (e.key==='Escape') closeModal();
+      if (e.key==='b'||e.key==='B'){ if(currentOpen) saveItem(currentOpen); }
       return;
     }
-    if (e.key === 'ArrowLeft')  { player.vx = -speed; }
-    if (e.key === 'ArrowRight') { player.vx =  speed; }
-    if (e.key === 'ArrowUp' || e.key === 'Enter') tryEnter();
-    if (e.key === 'a' || e.key === 'A'){ if (canEnterId){ var it = findById(canEnterId); if (it) openDetails(it); } }
-    if (e.key === 'b' || e.key === 'B'){ if (currentOpen) saveItem(currentOpen); }
+    if (e.key==='ArrowLeft'){ player.vx=-speed; }
+    if (e.key==='ArrowRight'){ player.vx= speed; }
+    if (e.key==='ArrowUp' || e.key==='Enter') tryEnter();
+    if (e.key==='a'||e.key==='A'){ if (canEnterId){ var it=findById(canEnterId); if(it) openDetails(it);} }
+    if (e.key==='b'||e.key==='B'){ if (currentOpen) saveItem(currentOpen); }
   });
   document.addEventListener('keyup', function(e){
-    if (e.key === 'ArrowLeft' && player.vx < 0) player.vx = 0;
-    if (e.key === 'ArrowRight' && player.vx > 0) player.vx = 0;
+    if (e.key==='ArrowLeft' && player.vx<0) player.vx=0;
+    if (e.key==='ArrowRight'&& player.vx>0) player.vx=0;
   });
 
-  btnSaved.addEventListener('click', toggleSavedPanel);
-  savedClose.addEventListener('click', function(){ setSavedPanel(false); });
+  btnSaved.onclick=toggleSavedPanel;
+  savedClose.onclick=function(){ setSavedPanel(false); };
 
-  modalBackdrop.addEventListener('click', function(e){ if (e.target===modalBackdrop) closeModal(); });
-  modalClose.addEventListener('click', closeModal);
-  modalSave.addEventListener('click', function(){ if (currentOpen) saveItem(currentOpen); });
+  modalBackdrop.addEventListener('click', function(e){ if(e.target===modalBackdrop) closeModal(); });
+  modalClose.onclick=closeModal;
+  modalSave.onclick=function(){ if (currentOpen) saveItem(currentOpen); };
 }
 
-function resizeToContainer(){
-  // canvas is sized via CSS; keep pixel-perfect via no smoothing
-  ctx.imageSmoothingEnabled = false;
-}
-
-/* ================= DATA ================= */
+/* ===== DATA ===== */
 function hydrate(){
-  return fetch(CSV_URL, { cache:'no-store' })
-    .then(function(res){ if(!res.ok) throw new Error(res.status); return res.text(); })
+  return fetch(CSV_URL, {cache:'no-store'})
+    .then(function(r){ if(!r.ok) throw new Error(r.status); return r.text(); })
     .then(function(text){
-      var objects = parseCsv(text);
-      var parts = partition(objects);
-      EVENTS = parts.events; DEALS = parts.deals;
-      if (!EVENTS.length && !DEALS.length){
-        var fb = fallback();
-        EVENTS = fb.events; DEALS = fb.deals;
-      }
+      var rows = csvToObjects(text);
+      var p = partition(rows);
+      EVENTS=p.events; DEALS=p.deals;
+      if(!EVENTS.length && !DEALS.length){ var fb=fallback(); EVENTS=fb.events; DEALS=fb.deals; }
     })
     .catch(function(){
-      var fb = fallback();
-      EVENTS = fb.events; DEALS = fb.deals;
+      var fb=fallback(); EVENTS=fb.events; DEALS=fb.deals;
     });
 }
-
-function parseCsv(text){
-  if (!text || !text.trim()) return [];
+function csvToObjects(text){
+  if(!text||!text.trim()) return [];
   var rows = csvRows(text);
-  if (!rows.length) return [];
-  var headers = rows[0].map(function(h){ return String(h||'').trim().toLowerCase(); });
-  var out = [];
-  for (var i=1; i<rows.length; i++){
-    var r = rows[i]; if (r.every(function(c){ return !String(c||'').trim(); })) continue;
-    var o = {};
-    for (var j=0; j<headers.length; j++) o[headers[j] || ('col_'+j)] = (r[j] == null ? '' : String(r[j])).trim();
-    out.push(normalizeRow(o, i));
+  if(!rows.length) return [];
+  var headers = rows[0].map(function(h){return String(h||'').trim().toLowerCase();});
+  var out=[];
+  for(var i=1;i<rows.length;i++){
+    var r=rows[i]; if(r.every(function(c){return !String(c||'').trim();})) continue;
+    var o={}; for(var j=0;j<headers.length;j++) o[headers[j]||('col_'+j)]=(r[j]==null?'':String(r[j])).trim();
+    out.push(normalize(o,i));
   }
   return out;
 }
 function csvRows(text){
   var rows=[],cur='',row=[],q=false;
-  for (var i=0;i<text.length;i++){
+  for(var i=0;i<text.length;i++){
     var ch=text[i], nx=text[i+1];
-    if (ch === '"'){ if (q && nx === '"'){ cur+='"'; i++; } else q=!q; }
-    else if (ch===',' && !q){ row.push(cur); cur=''; }
-    else if ((ch==='\n'||ch==='\r') && !q){ if (ch==='\r'&&nx==='\n') i++; row.push(cur); rows.push(row); row=[]; cur=''; }
+    if(ch==='"'){ if(q && nx==='"'){cur+='"'; i++;} else q=!q; }
+    else if(ch===',' && !q){ row.push(cur); cur=''; }
+    else if((ch==='\n'||ch==='\r') && !q){ if(ch==='\r'&&nx==='\n') i++; row.push(cur); rows.push(row); row=[]; cur=''; }
     else cur+=ch;
   }
   row.push(cur); rows.push(row); return rows;
 }
-function normalizeRow(obj, idx){
-  function pick(keys, def){ for(var k=0;k<keys.length;k++){ var v=obj[keys[k]]; if(v!=null && String(v).trim()!=='') return String(v).trim(); } return def||''; }
+function normalize(obj, idx){
+  function pick(keys,def){ for(var k=0;k<keys.length;k++){ var v=obj[keys[k]]; if(v!=null && String(v).trim()!=='') return String(v).trim(); } return def||''; }
   var type = pick(['type','category'],'').toLowerCase()==='deal' ? 'deal' : 'event';
-  var title= pick(['title','name']) || 'Untitled';
-  var venue= pick(['venue','venue_name','business','place']);
-  var when = pick(['when','time','window','start_datetime']);
-  var desc = pick(['description','details','desc']);
-  var link = pick(['link','url','website','source_url']);
-  var addr = pick(['address','addr','location']);
-  var phone= pick(['phone','tel','telephone']);
-
-  var s = parseTime(pick(['start_datetime'],''));
-  var e = parseTime(pick(['end_datetime'],''));
-  if (s || e){
-    var sTxt = s ? s.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '';
-    var eTxt = e ? e.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '';
-    if (s && e) when = 'Today ' + sTxt + '–' + eTxt;
-    else if (s) when = 'Today ' + sTxt;
-    else if (e) when = 'Until ' + eTxt + ' today';
+  var title=pick(['title','name'])||'Untitled';
+  var venue=pick(['venue','venue_name','business','place']);
+  var when =pick(['when','time','window','start_datetime']);
+  var desc =pick(['description','details','desc']);
+  var link =pick(['link','url','website','source_url']);
+  var addr =pick(['address','addr','location']);
+  var phone=pick(['phone','tel','telephone']);
+  var s=parseTime(pick(['start_datetime'],''));
+  var e=parseTime(pick(['end_datetime'],''));
+  if(s||e){
+    var sTxt=s?s.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}):'';
+    var eTxt=e?e.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}):'';
+    if(s&&e) when='Today '+sTxt+'–'+eTxt;
+    else if(s) when='Today '+sTxt;
+    else if(e) when='Until '+eTxt+' today';
   }
-
-  return {
-    id: hashId(title+'|'+venue+'|'+when+'|'+idx),
-    type:type, title:title, venue:venue||'', when:when||'Today',
-    description:desc||'', short:'', link:link||undefined, address:addr||undefined, phone:phone||undefined
-  };
+  return { id:hashId(title+'|'+venue+'|'+when+'|'+idx), type:type, title:title, venue:venue||'', when:when||'Today',
+           description:desc||'', short:'', link:link||undefined, address:addr||undefined, phone:phone||undefined };
 }
 function parseTime(s){
   var t=String(s||'').toLowerCase().replace(/\u00a0|\u202f/g,' ').trim();
@@ -482,8 +390,7 @@ function parseTime(s){
   var dt=new Date(y,mo-1,d,h,mm,0,0); return isNaN(+dt)?null:dt;
 }
 function partition(items){
-  var ev=[], de=[];
-  for (var i=0;i<items.length;i++) (items[i].type==='deal'?de:ev).push(items[i]);
+  var ev=[],de=[]; for(var i=0;i<items.length;i++) (items[i].type==='deal'?de:ev).push(items[i]);
   return {events:ev, deals:de};
 }
 function fallback(){
@@ -500,274 +407,236 @@ function fallback(){
   };
 }
 
-/* ================= VARIATION HELPERS (houses & sky) ================= */
-function prng(seed){ var x = Math.sin(seed) * 10000; return x - Math.floor(x); }
-function rndi(seed, min, max){ return Math.floor(prng(seed)*(max-min+1)) + min; }
-
-/* tiny cloud made of pixels */
-function drawCloud(cx, cy, scale){
-  var w = Math.max(2, Math.floor(6*scale)), h = Math.max(2, Math.floor(3*scale));
-  for(var y=0;y<h;y++){
-    for(var x=0;x<w;x++){
-      var edge = (x===0||y===0||x===w-1||y===h-1);
-      var color = edge ? 0xEDEDED : 0xFFFFFF;
-      putPixel((cx+x)|0, (cy+y)|0, color);
-    }
-  }
-}
-
-/* house palette presets */
-var HOUSE_PALETTE = {
-  wood:  { wall:0xC98F5A, plankDark:0xB17846, roof:0x6B4A2E, door:0x3F2B1B, win:0xFFF3A3, frame:0x4B3A23 },
-  stone: { wall:0xD6D6D6, plankDark:0xBEBEBE, roof:0x5E6E7B, door:0x394653, win:0xDDF1FF, frame:0x2E3B45 },
-  modern:{ wall:0xFFFFFF, plankDark:0xEDEDED, roof:0x567D2C, door:0x2D1C4A, win:0xCFE8FF, frame:0x2D1C4A }
-};
-
-/* ================= WORLD GEN ================= */
+/* ===== WORLD ===== */
 function setCategory(kind){
-  CATEGORY = (kind==='deals')?'deals':'events';
+  CATEGORY=(kind==='deals')?'deals':'events';
   tabEvents.setAttribute('aria-pressed', String(CATEGORY==='events'));
   tabDeals.setAttribute('aria-pressed',  String(CATEGORY==='deals'));
   tabEvents.setAttribute('aria-selected', String(CATEGORY==='events'));
   tabDeals.setAttribute('aria-selected',  String(CATEGORY==='deals'));
 
-  ITEMS = (CATEGORY==='events'?EVENTS:DEALS).slice();
+  ITEMS=(CATEGORY==='events'?EVENTS:DEALS).slice();
   buildHouses();
-  player.x = 10; cameraX = 0;
-  canEnterId = null;
+  player.x=12; cameraX=0; canEnterId=null;
 }
 
 function buildHouses(){
-  houses = [];
-  var x = 40;               // logical pixels in 256x160 space
-  var gap = 110;            // base distance between houses
-  var list = (CATEGORY==='events'?EVENTS:DEALS);
-
-  for (var i=0;i<list.length;i++){
-    var it = list[i];
-    var seed = hashId(it.id).length; // simple numeric-ish seed
-    var variantPick = ['wood','stone','modern'][rndi(seed,0,2)];
-    // width 28..42, height 18..28 (coherent proportions)
-    var w = rndi(seed+7, 28, 42);
-    var h = rndi(seed+11, 18, 28);
-    // window layout 0..2 rows, 1..3 columns
-    var winRows = rndi(seed+23, 0, 2);
-    var winCols = rndi(seed+29, 1, 3);
-    houses.push({
-      id:it.id, title:it.title, when:it.when,
-      x:x, w:w, h:h, variant:variantPick, seed:seed,
-      winRows:winRows, winCols:winCols
-    });
-    x += gap + rndi(seed+3, -10, 18); // vary spacing a bit
+  houses=[];
+  var x=40, gap=110, list=(CATEGORY==='events'?EVENTS:DEALS);
+  for(var i=0;i<list.length;i++){
+    var it=list[i];
+    var seed=hashId(it.id).length + i*13;
+    var variant=['wood','stone','modern'][rndi(seed,0,2)];
+    var w=rndi(seed+7, 26, 44);               // width variety
+    var h=rndi(seed+11, 16, 34);              // HEIGHT VARIETY
+    var winRows=rndi(seed+23, 0, 2);
+    var winCols=rndi(seed+29, 1, 3);
+    houses.push({ id:it.id, title:it.title, when:it.when, x:x, w:w, h:h, variant:variant, seed:seed, winRows:winRows, winCols:winCols });
+    x += gap + rndi(seed+3, -10, 18);
   }
-  worldW = Math.max(256, (houses.length ? houses[houses.length-1].x + 120 : 256));
+  worldW=Math.max(256, (houses.length? houses[houses.length-1].x+120:256));
 }
 
-function findById(id){
-  for (var i=0;i<ITEMS.length;i++) if (ITEMS[i].id===id) return ITEMS[i];
-  return null;
-}
-
-/* ================= RENDER (blue sky, clouds, green grass, varied houses) ================= */
+/* ===== GAME LOOP ===== */
 function loop(){
   update();
   render();
   requestAnimationFrame(loop);
 }
-
 function update(){
+  // movement + simple footstep anim
+  if (player.vx!==0){ player.step = (player.step+1)%16; }
   player.x += player.vx;
-  if (player.x < 0) player.x = 0;
-  if (player.x > worldW-1) player.x = worldW-1;
+  if (player.x<0) player.x=0;
+  if (player.x>worldW-1) player.x=worldW-1;
 
-  // camera centers on player
   cameraX = Math.round(player.x - (canvas.width/2));
-  if (cameraX < 0) cameraX = 0;
-  if (cameraX > worldW - canvas.width) cameraX = worldW - canvas.width;
+  if (cameraX<0) cameraX=0;
+  if (cameraX>worldW-canvas.width) cameraX=worldW-canvas.width;
 
   // enter detection
-  var aligned = null;
-  for (var i=0;i<houses.length;i++){
-    var hx = houses[i].x;
-    if (Math.abs((hx - player.x)) < 8){ aligned = houses[i]; break; }
+  var aligned=null;
+  for(var i=0;i<houses.length;i++){
+    var hx=houses[i].x;
+    if (Math.abs(hx-player.x) < 8){ aligned=houses[i]; break; }
   }
-  if (aligned){ canEnterId = aligned.id; hintEl.classList.add('show'); }
-  else { canEnterId = null; hintEl.classList.remove('show'); }
+  if (aligned){ canEnterId=aligned.id; hintEl.classList.add('show'); }
+  else { canEnterId=null; hintEl.classList.remove('show'); }
 }
 
+/* ===== RENDER ===== */
 function render(){
-  // --- Sky gradient (light to medium blue) ---
-  var skyTop = 0xCFEAFF;   // light
-  var skyMid = 0xA9D8FF;   // mid
-  var skyBot = 0x8CC7FF;   // deeper
-  for (var y=0; y<120; y++){
-    var t = y/120;
-    var hex =
-      (t<0.5) ? skyLerp(skyTop, skyMid, t/0.5)
-              : skyLerp(skyMid, skyBot, (t-0.5)/0.5);
+  // SKY gradient (blue)
+  var top=0xCFEAFF, mid=0xA9D8FF, bot=0x8CC7FF;
+  for(var y=0;y<120;y++){
+    var t=y/120, hex=(t<0.5)?lerpRGB(top,mid,t/0.5):lerpRGB(mid,bot,(t-0.5)/0.5);
     horizLine(0,y,canvas.width,hex);
   }
 
-  // --- Moving clouds ---
-  var tMs = Date.now();
-  for (var i=0;i<8;i++){
-    var s = 0.8 + ((i%3)*0.4);
-    var speed = 0.03 + (i%3)*0.015;
-    var cx = ((i*80) - ((tMs*speed)|0)) % (canvas.width+120) - 60;
-    var cy = 12 + (i%4)*18;
-    drawCloud(cx, cy, s);
-    drawCloud(cx+12, cy+3, s*0.9);
-    drawCloud(cx+26, cy+1, s*0.7);
-  }
+  // CLOUDS (animated left -> right & right -> left layers)
+  var time = Date.now();
+  drawCloudLayer(0.03, 0, time);
+  drawCloudLayer(-0.02, 10, time); // parallax opposite direction
 
-  // --- Grass ground ---
-  var grass = 0x76C86A;       // main grass green
-  var stripe = 0x5EAF55;      // darker stripes
-  fillRect(0,120,canvas.width,40, grass);
-  for (var yy=120; yy<160; yy+=2){
-    horizLine(0,yy,canvas.width, (yy%4===0)?stripe:grass);
-  }
+  // GRASS ground
+  var grass=0x76C86A, stripe=0x5EAF55;
+  fillRect(0,120,canvas.width,40,grass);
+  for (var gy=120; gy<160; gy+=2) horizLine(0,gy,canvas.width,(gy%4===0)?stripe:grass);
 
-  // --- Houses (varied) ---
-  for (var j=0;j<houses.length;j++){
-    drawHouseVar(houses[j], cameraX);
-  }
+  // HOUSES
+  for(var i=0;i<houses.length;i++) drawHouseVar(houses[i], cameraX);
 
-  // --- Player ---
-  drawPlayer(Math.round(player.x - cameraX), Math.round(player.y));
+  // PLAYER (visible + purple shirt)
+  drawPlayer(Math.round(player.x - cameraX), Math.round(player.y), player.step);
 }
 
-function skyLerp(a,b,t){
-  var ar=(a>>16)&255, ag=(a>>8)&255, ab=a&255;
-  var br=(b>>16)&255, bg=(b>>8)&255, bb=b&255;
-  var rr = (ar + (br-ar)*t)|0;
-  var gg = (ag + (bg-ag)*t)|0;
-  var bb2= (ab + (bb-ab)*t)|0;
-  return (rr<<16)|(gg<<8)|bb2;
+/* ===== CLOUDS ===== */
+function drawCloudLayer(speed, yOffset, time){
+  for (var i=0;i<10;i++){
+    var scale = 0.8 + (i%3)*0.35;
+    var cx = ((i*76) + (time*speed)) % (canvas.width+120);
+    if (cx< -60) cx += (canvas.width+120);
+    var cy = 10 + yOffset + (i%4)*18;
+    pixelCloud(cx-60, cy, scale);
+  }
+}
+function pixelCloud(cx, cy, s){
+  var w=Math.max(2, Math.floor(6*s)), h=Math.max(2, Math.floor(3*s));
+  for(var y=0;y<h;y++){
+    for(var x=0;x<w;x++){
+      var edge=(x===0||y===0||x===w-1||y===h-1);
+      var color=edge?0xEDEDED:0xFFFFFF;
+      putPixel((cx+x)|0, (cy+y)|0, color);
+    }
+  }
 }
 
+/* ===== HOUSES ===== */
+var HOUSE_PALETTE={
+  wood:{ wall:0xC98F5A, plankDark:0xB17846, roof:0x6B4A2E, door:0x3F2B1B, win:0xFFF3A3, frame:0x4B3A23, beam:0x744C2D },
+  stone:{ wall:0xD6D6D6, plankDark:0xBEBEBE, roof:0x5E6E7B, door:0x394653, win:0xDDF1FF, frame:0x2E3B45, beam:0x4A5A66 },
+  modern:{ wall:0xFFFFFF, plankDark:0xEDEDED, roof:0x567D2C, door:0x2D1C4A, win:0xCFE8FF, frame:0x2D1C4A, beam:0x2D1C4A }
+};
 function drawHouseVar(h, camX){
-  var baseX = h.x - camX;
-  var groundY = 120;
-  var w = h.w, hh = h.h;
-  var x = baseX - Math.floor(w/2);
-  var y = groundY - hh;
+  var baseX=h.x - camX, groundY=120, w=h.w, hh=h.h;
+  var x=baseX - Math.floor(w/2), y=groundY - hh;
+  var pal=HOUSE_PALETTE[h.variant]||HOUSE_PALETTE.wood;
 
-  var pal = HOUSE_PALETTE[h.variant] || HOUSE_PALETTE.wood;
-
-  // WALL
+  // body
   fillRect(x, y, w, hh, pal.wall);
 
-  // WOOD PLANKS subtle animation (shift every ~500ms)
-  if (h.variant === 'wood'){
-    var phase = ((Date.now()/500)|0) % 2;
-    for (var py=0; py<hh; py+=3){
-      horizLine(x, y+py+phase, w, pal.plankDark);
+  // wood/stone texture
+  if (h.variant==='wood'){
+    var phase=((Date.now()/500)|0)%2;
+    for (var py=0; py<hh; py+=3) horizLine(x, y+py+phase, w, pal.plankDark);
+    // simple porch for some
+    if ((h.seed%3)===0){
+      // posts
+      fillRect(x-6, y+hh-10, 2, 10, pal.beam);
+      fillRect(x-2, y+hh-10, 2, 10, pal.beam);
+      // roof beam
+      horizLine(x-8, y+hh-10, 10, pal.beam);
     }
-  } else if (h.variant === 'stone'){
-    // stone blocks – staggered rows
+  } else if (h.variant==='stone'){
     for (var ry=0; ry<hh; ry+=4){
-      var offset = (ry%8===0)?0:2;
-      for (var rx=0; rx<w; rx+=6){
-        fillRect(x+rx+offset, y+ry, 4, 3, pal.plankDark);
-      }
+      var offset=(ry%8===0)?0:2;
+      for (var rx=0; rx<w; rx+=6) fillRect(x+rx+offset, y+ry, 4, 3, pal.plankDark);
     }
   }
 
-  // ROOF (triangle)
-  tri(x-2, y, x+w+2, y, x+Math.floor(w/2), y- Math.max(8, (w/3)|0), pal.roof);
+  // roof triangle
+  tri(x-2, y, x+w+2, y, x+Math.floor(w/2), y- Math.max(8,(w/3)|0), pal.roof);
 
-  // DOOR
-  var dW = Math.max(6, (w/6)|0), dH = Math.max(10, (hh/2)|0);
+  // door
+  var dW=Math.max(6,(w/6)|0), dH=Math.max(10,(hh/2)|0);
   fillRect(x+Math.floor(w/2)-Math.floor(dW/2), y+hh-dH, dW, dH, pal.door);
 
-  // WINDOWS
-  var winGapX = Math.max(3, (w/(h.winCols+1))|0);
-  var winGapY = Math.max(5, (hh/(h.winRows+3))|0);
-  var winW = Math.max(4, (w/8)|0), winH = Math.max(4, (hh/6)|0);
-  var flick = ((Date.now()/700)|0) % 2;
-
-  for (var r=0; r<h.winRows; r++){
-    for (var c=0; c<h.winCols; c++){
-      var wx = x + winGapX*(c+1) - Math.floor(winW/2);
-      var wy = y + winGapY*(r+1);
-      var lit = ((r+c+flick+h.seed)%2===0);
-      var winColor = lit ? pal.win : 0xAAC7E0;
-      fillRect(wx, wy, winW, winH, winColor);                // pane
-      // frame
-      horizLine(wx-1, wy-1, winW+2, pal.frame);
-      horizLine(wx-1, wy+winH, winW+2, pal.frame);
-      fillRect(wx-1, wy-1, 1, winH+2, pal.frame);
-      fillRect(wx+winW, wy-1, 1, winH+2, pal.frame);
-      // mullion
-      fillRect(wx+Math.floor(winW/2), wy, 1, winH, pal.frame);
-      horizLine(wx, wy+Math.floor(winH/2), winW, pal.frame);
+  // windows (rows/cols vary)
+  var winGapX=Math.max(3,(w/(h.winCols+1))|0), winGapY=Math.max(5,(hh/(h.winRows+3))|0);
+  var winW=Math.max(4,(w/8)|0), winH=Math.max(4,(hh/6)|0);
+  var flick=((Date.now()/700)|0)%2;
+  for (var r=0;r<h.winRows;r++){
+    for (var c=0;c<h.winCols;c++){
+      var wx=x+winGapX*(c+1)-Math.floor(winW/2);
+      var wy=y+winGapY*(r+1);
+      var lit=((r+c+flick+h.seed)%2===0);
+      var winColor=lit?pal.win:0xAAC7E0;
+      fillRect(wx,wy,winW,winH,winColor);
+      // frame & mullions
+      horizLine(wx-1,wy-1,winW+2,pal.frame);
+      horizLine(wx-1,wy+winH,winW+2,pal.frame);
+      fillRect(wx-1,wy-1,1,winH+2,pal.frame);
+      fillRect(wx+winW,wy-1,1,winH+2,pal.frame);
+      fillRect(wx+Math.floor(winW/2),wy,1,winH,pal.frame);
+      horizLine(wx,wy+Math.floor(winH/2),winW,pal.frame);
     }
   }
 
-  // TITLE on roof (pixel text, clamped)
-  pixelText(h.title.toUpperCase(), x, y - 12, 0x0E390E, Math.min(w, 48));
+  // title on roof
+  pixelText(h.title.toUpperCase(), x, y-12, 0x0E390E, Math.min(w, 52));
 }
 
-/* ================= ENTER / MODAL ================= */
+/* ===== PLAYER (always visible) ===== */
+function drawPlayer(x,y,step){
+  // outline
+  fillRect(x-3, y-14, 10, 14, 0x000000); // shadow box (simple outline)
+  // head
+  fillRect(x-1, y-12, 6, 4, 0xf2c199);
+  // body (brand purple)
+  fillRect(x-2, y-8, 8, 6, 0x6332c8);
+  // legs with tiny walk cycle
+  var alt = (step<8)?0:1;
+  fillRect(x-1-alt, y-2, 2, 2, 0x000000);
+  fillRect(x+2+alt, y-2, 2, 2, 0x000000);
+}
+
+/* ===== ENTER / MODAL ===== */
 function tryEnter(){
-  if (!canEnterId) return;
-  var it = findById(canEnterId);
-  if (!it) return;
+  if(!canEnterId) return;
+  var it=findById(canEnterId); if(!it) return;
   openDetails(it);
 }
+function findById(id){ for(var i=0;i<ITEMS.length;i++) if(ITEMS[i].id===id) return ITEMS[i]; return null; }
 function openDetails(item){
-  currentOpen = item;
-  modalTitle.textContent = item.title || '(Untitled)';
-  modalWhen.textContent = item.when || 'Today';
-  modalVenue.textContent = item.venue || '';
-  modalAddress.textContent = item.address || '';
-  modalPhone.textContent = item.phone || '';
-  modalDesc.textContent = item.description || '';
+  currentOpen=item;
+  modalTitle.textContent=item.title||'(Untitled)';
+  modalWhen.textContent=item.when||'Today';
+  modalVenue.textContent=item.venue||'';
+  modalAddress.textContent=item.address||'';
+  modalPhone.textContent=item.phone||'';
+  modalDesc.textContent=item.description||'';
 
-  // links
   while (modalLinks.firstChild) modalLinks.removeChild(modalLinks.firstChild);
-  if (item.link){
-    var a = document.createElement('a'); a.className='btn'; a.href=item.link; a.target='_blank'; a.rel='noopener'; a.textContent='Open link';
-    modalLinks.appendChild(a);
-  }
-  if (item.address){
-    var g = document.createElement('a'); g.className='btn';
-    g.href='https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(item.address); g.target='_blank'; g.rel='noopener'; g.textContent='Get directions';
-    modalLinks.appendChild(g);
-  }
-  if (item.phone){
-    var p = document.createElement('a'); p.className='btn'; p.href='tel:'+item.phone.replace(/\s+/g,''); p.textContent='Call';
-    modalLinks.appendChild(p);
-  }
+  if(item.link){ var a=document.createElement('a'); a.className='btn'; a.href=item.link; a.target='_blank'; a.rel='noopener'; a.textContent='Open link'; modalLinks.appendChild(a); }
+  if(item.address){ var g=document.createElement('a'); g.className='btn'; g.href='https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(item.address); g.target='_blank'; g.rel='noopener'; g.textContent='Get directions'; modalLinks.appendChild(g); }
+  if(item.phone){ var p=document.createElement('a'); p.className='btn'; p.href='tel:'+item.phone.replace(/\s+/g,''); p.textContent='Call'; modalLinks.appendChild(p); }
+
   modalIcs.href = makeIcs(item);
   modalBackdrop.style.display='flex';
 }
 function closeModal(){ modalBackdrop.style.display='none'; }
 
-/* ================= SAVED ================= */
+/* ===== SAVED ===== */
 function getSaved(){ try{ return JSON.parse(localStorage.getItem('sb_saved')||'[]'); }catch(e){ return []; } }
 function setSaved(arr){ localStorage.setItem('sb_saved', JSON.stringify(arr)); }
-function updateSavedBadge(){ savedCountEl.textContent = String(getSaved().length); }
+function updateSavedBadge(){ savedCountEl.textContent=String(getSaved().length); }
 function saveItem(item){
-  var arr = getSaved(); for (var i=0;i<arr.length;i++) if (arr[i].id===item.id) { closeModal(); return; }
+  var arr=getSaved(); for(var i=0;i<arr.length;i++) if(arr[i].id===item.id){ closeModal(); return; }
   arr.push(item); setSaved(arr); updateSavedBadge(); renderSavedList(); closeModal();
 }
-function removeSaved(id){
-  var arr = getSaved().filter(function(x){ return x.id!==id; }); setSaved(arr); updateSavedBadge(); renderSavedList();
-}
+function removeSaved(id){ var arr=getSaved().filter(function(x){return x.id!==id;}); setSaved(arr); updateSavedBadge(); renderSavedList(); }
 function renderSavedList(){
   savedList.innerHTML='';
-  var arr = getSaved();
-  if (!arr.length){ savedList.textContent='No saved items yet.'; return; }
-  for (var i=0;i<arr.length;i++){
+  var arr=getSaved();
+  if(!arr.length){ savedList.textContent='No saved items yet.'; return; }
+  for(var i=0;i<arr.length;i++){
     (function(it){
-      var card = document.createElement('div'); card.className='saved-item';
-      var title = document.createElement('div'); title.className='title'; title.textContent = it.title;
-      var meta  = document.createElement('div'); meta.className='meta'; meta.textContent = (it.when||'Today') + (it.venue?(' • '+it.venue):'');
-      var row = document.createElement('div'); row.className='row';
-      var det = document.createElement('button'); det.className='btn'; det.textContent='Details'; det.onclick=function(){ openDetails(it); };
-      var rem = document.createElement('button'); rem.className='btn primary'; rem.textContent='Remove'; rem.onclick=function(){ removeSaved(it.id); };
+      var card=document.createElement('div'); card.className='saved-item';
+      var title=document.createElement('div'); title.className='title'; title.textContent=it.title;
+      var meta=document.createElement('div'); meta.className='meta'; meta.textContent=(it.when||'Today')+(it.venue?(' • '+it.venue):'');
+      var row=document.createElement('div'); row.className='row';
+      var det=document.createElement('button'); det.className='btn'; det.textContent='Details'; det.onclick=function(){ openDetails(it); };
+      var rem=document.createElement('button'); rem.className='btn primary'; rem.textContent='Remove'; rem.onclick=function(){ removeSaved(it.id); };
       row.appendChild(det); row.appendChild(rem);
       card.appendChild(title); card.appendChild(meta); card.appendChild(row);
       savedList.appendChild(card);
@@ -776,72 +645,62 @@ function renderSavedList(){
 }
 function toggleSavedPanel(){ setSavedPanel(!savedPanel.classList.contains('open')); }
 function setSavedPanel(open){
-  if (open){ renderSavedList(); savedPanel.classList.add('open'); btnSaved.setAttribute('aria-expanded','true'); savedPanel.setAttribute('aria-hidden','false'); }
-  else { savedPanel.classList.remove('open'); btnSaved.setAttribute('aria-expanded','false'); savedPanel.setAttribute('aria-hidden','true'); }
+  if(open){ renderSavedList(); savedPanel.classList.add('open'); btnSaved.setAttribute('aria-expanded','true'); savedPanel.setAttribute('aria-hidden','false'); }
+  else    { savedPanel.classList.remove('open'); btnSaved.setAttribute('aria-expanded','false'); savedPanel.setAttribute('aria-hidden','true'); }
 }
 
-/* ================= ICS ================= */
+/* ===== ICS ===== */
 function makeIcs(item){
   var now=new Date();
-  var start = parseWhen(item.when) || new Date(now.getFullYear(), now.getMonth(), now.getDate(), 19,0,0);
-  var end   = new Date(start.getTime()+60*60*1000);
-  function p(n){ return (n<10?'0':'')+n; }
-  function fmt(dt){ return dt.getUTCFullYear()+p(dt.getUTCMonth()+1)+p(dt.getUTCDate())+'T'+p(dt.getUTCHours())+p(dt.getUTCMinutes())+p(dt.getUTCSeconds())+'Z'; }
-  var lines=[
-    'BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//SocialBurst//GameBoy//EN','BEGIN:VEVENT',
+  var start=parseWhen(item.when)||new Date(now.getFullYear(),now.getMonth(),now.getDate(),19,0,0);
+  var end=new Date(start.getTime()+60*60*1000);
+  function p(n){return (n<10?'0':'')+n;}
+  function fmt(dt){return dt.getUTCFullYear()+p(dt.getUTCMonth()+1)+p(dt.getUTCDate())+'T'+p(dt.getUTCHours())+p(dt.getUTCMinutes())+p(dt.getUTCSeconds())+'Z';}
+  var lines=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//SocialBurst//GameBoy//EN','BEGIN:VEVENT',
     'UID:'+item.id+'@socialburst','DTSTAMP:'+fmt(new Date()),'DTSTART:'+fmt(start),'DTEND:'+fmt(end),
     'SUMMARY:'+esc(item.title||''),'LOCATION:'+esc(item.venue||''),'DESCRIPTION:'+esc((item.description||'')+(item.link?(' '+item.link):'')),
-    'END:VEVENT','END:VCALENDAR'
-  ];
-  return URL.createObjectURL(new Blob([lines.join('\r\n')], {type:'text/calendar'}));
+    'END:VEVENT','END:VCALENDAR'];
+  return URL.createObjectURL(new Blob([lines.join('\r\n')],{type:'text/calendar'}));
 }
+function parseWhen(str){ var m=String(str||'').toLowerCase().match(/today\s+(\d{1,2}):(\d{2})/); if(!m) return null; var h=+m[1],mi=+m[2]; var n=new Date(); return new Date(n.getFullYear(),n.getMonth(),n.getDate(),h,mi,0,0); }
 function esc(s){ return String(s).replace(/([,;])/g,'\\$1').replace(/\n/g,'\\n'); }
-function parseWhen(str){ var m=String(str||'').toLowerCase().match(/today\s+(\d{1,2}):(\d{2})/); if(!m) return null; var h=+m[1], mi=+m[2]; var n=new Date(); return new Date(n.getFullYear(),n.getMonth(),n.getDate(),h,mi,0,0); }
 
-/* ================= DRAW HELPERS ================= */
-function putPixel(x,y,hex){
-  ctx.fillStyle = '#'+hex.toString(16).padStart(6,'0');
-  ctx.fillRect(x|0, y|0, 1, 1);
-}
-function fillRect(x,y,w,h,hex){
-  ctx.fillStyle = '#'+hex.toString(16).padStart(6,'0');
-  ctx.fillRect(x|0, y|0, w|0, h|0);
-}
+/* ===== DRAW HELPERS ===== */
+function putPixel(x,y,hex){ ctx.fillStyle='#'+hex.toString(16).padStart(6,'0'); ctx.fillRect(x|0,y|0,1,1); }
+function fillRect(x,y,w,h,hex){ ctx.fillStyle='#'+hex.toString(16).padStart(6,'0'); ctx.fillRect(x|0,y|0,w|0,h|0); }
 function horizLine(x,y,len,hex){ fillRect(x,y,len,1,hex); }
-function tri(x1,y1,x2,y2,x3,y3,hex){
-  ctx.fillStyle = '#'+hex.toString(16).padStart(6,'0');
-  ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.lineTo(x3,y3); ctx.closePath(); ctx.fill();
+function tri(x1,y1,x2,y2,x3,y3,hex){ ctx.fillStyle='#'+hex.toString(16).padStart(6,'0'); ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.lineTo(x3,y3); ctx.closePath(); ctx.fill(); }
+function lerpRGB(a,b,t){
+  var ar=(a>>16)&255, ag=(a>>8)&255, ab=a&255;
+  var br=(b>>16)&255, bg=(b>>8)&255, bb=b&255;
+  var rr=(ar+(br-ar)*t)|0, gg=(ag+(bg-ag)*t)|0, bb2=(ab+(bb-ab)*t)|0;
+  return (rr<<16)|(gg<<8)|bb2;
 }
 
-/* Pixel text: very tiny 3x5 font */
-var FONT = {
-  A:["010","101","111","101","101"], B:["110","101","110","101","110"], C:["011","100","100","100","011"],
-  D:["110","101","101","101","110"], E:["111","100","110","100","111"], F:["111","100","110","100","100"],
-  G:["011","100","101","101","011"], H:["101","101","111","101","101"], I:["111","010","010","010","111"],
-  J:["001","001","001","101","010"], K:["101","101","110","101","101"], L:["100","100","100","100","111"],
-  M:["101","111","111","101","101"], N:["101","111","111","111","101"], O:["010","101","101","101","010"],
-  P:["110","101","110","100","100"], Q:["010","101","101","111","011"], R:["110","101","110","101","101"],
-  S:["011","100","010","001","110"], T:["111","010","010","010","010"], U:["101","101","101","101","111"],
-  V:["101","101","101","101","010"], W:["101","101","111","111","101"], X:["101","101","010","101","101"],
-  Y:["101","101","010","010","010"], Z:["111","001","010","100","111"], " ":[ "000","000","000","000","000" ]
+/* Pixel text 3x5 */
+var FONT={
+  A:["010","101","111","101","101"],B:["110","101","110","101","110"],C:["011","100","100","100","011"],
+  D:["110","101","101","101","110"],E:["111","100","110","100","111"],F:["111","100","110","100","100"],
+  G:["011","100","101","101","011"],H:["101","101","111","101","101"],I:["111","010","010","010","111"],
+  J:["001","001","001","101","010"],K:["101","101","110","101","101"],L:["100","100","100","100","111"],
+  M:["101","111","111","101","101"],N:["101","111","111","111","101"],O:["010","101","101","101","010"],
+  P:["110","101","110","100","100"],Q:["010","101","101","111","011"],R:["110","101","110","101","101"],
+  S:["011","100","010","001","110"],T:["111","010","010","010","010"],U:["101","101","101","101","111"],
+  V:["101","101","101","101","010"],W:["101","101","111","111","101"],X:["101","101","010","101","101"],
+  Y:["101","101","010","010","010"],Z:["111","001","010","100","111"]," ":[ "000","000","000","000","000" ]
 };
-function pixelText(s, x, y, color, maxWidth){
-  var px = x, py = y, w = 4; // 3 wide + 1 space
-  var chars = Math.min(Math.floor((maxWidth||1000)/w), s.length);
-  for (var i=0;i<chars;i++){
-    var ch = s[i];
-    var g = FONT[ch] || FONT[" "];
-    for (var r=0;r<5;r++){
-      var row = g[r];
-      for (var c=0;c<3;c++) if (row[c]==='1') putPixel(px+c, py+r, color);
-    }
-    px += w;
+function pixelText(s,x,y,color,maxWidth){
+  var px=x, w=4, chars=Math.min(Math.floor((maxWidth||1000)/w), s.length);
+  for(var i=0;i<chars;i++){
+    var g=FONT[s[i]]||FONT[" "]; for(var r=0;r<5;r++){ var row=g[r]; for(var c=0;c<3;c++) if(row[c]==='1') putPixel(px+c, y+r, color); }
+    px+=w;
   }
 }
 
-/* ================= UTILS ================= */
-function hashId(s){ var h=0; for (var i=0;i<s.length;i++){ h=((h<<5)-h)+s.charCodeAt(i); h|=0; } return 'sb_'+Math.abs(h); }
-function nudge(dir){ player.vx = dir*speed; setTimeout(function(){ if ((dir<0 && player.vx<0) || (dir>0 && player.vx>0)) player.vx=0; }, 120); }
+/* ===== UTILS ===== */
+function hashId(s){ var h=0; for(var i=0;i<s.length;i++){ h=((h<<5)-h)+s.charCodeAt(i); h|=0; } return 'sb_'+Math.abs(h); }
+function rndi(seed,min,max){ var x=Math.sin(seed)*10000; var v=x - Math.floor(x); return Math.floor(v*(max-min+1))+min; }
+function nudge(dir){ player.vx=dir*speed; setTimeout(function(){ if((dir<0 && player.vx<0)||(dir>0 && player.vx>0)) player.vx=0; },120); }
 </script>
 </body>
 </html>
