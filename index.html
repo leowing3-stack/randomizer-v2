@@ -246,7 +246,7 @@ var PHYS = {
 /* PATCH END */
 /* PATCH START: define keys state */
 var keys = { left:false, right:false, up:false };
-/* PATCH END */%
+/* PATCH END *
 /* === PLAYER SPRITE CONFIG (folders + filenames) === */
 var PLAYER_SPR = {
   scale: 1,   // bump to 2 if tiny
@@ -329,10 +329,13 @@ var map = loadTileMap() || defaultMap;
 var tweak = { on:false, key:'grass', index:0 };
 /* === LOAD PER-FRAME PNGs === */
 function loadImage(url){
-  return new Promise(function(resolve, reject){
+  return new Promise(function(resolve){
     var img = new Image();
     img.onload = function(){ resolve(img); };
-    img.onerror = reject;
+    img.onerror = function(){
+      console.warn("Missing sprite:", url);
+      resolve(null); // don't reject; keep boot alive
+    };
     img.src = url;
   });
 }
@@ -362,15 +365,18 @@ function loadPlayerSprites(){
 /* ================= BOOT ================= */
 window.addEventListener('DOMContentLoaded', function(){
   wireUI();
- Promise.all([
+Promise.all([
   loadAtlas("./SocialBurstRandomizer/sprites/socialburst_tileset.png"),
   loadPlayerSprites(),
   hydrate()
-]).then(function(){
-    setCategory('events');
-    updateSavedBadge();
-    requestAnimationFrame(loop);
-  });
+])
+.catch(function(err){
+  console.warn("Boot continuing despite error:", err);
+})
+.then(function(){
+  setCategory('events');
+  updateSavedBadge();
+  requestAnimationFrame(loop);
 });
 
 function wireUI(){
