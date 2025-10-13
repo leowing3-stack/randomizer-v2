@@ -319,6 +319,19 @@ var player = {
   coyote: 0,          // timer
   jumpBuffer: 0       // timer
 };
+// --- Jump helpers (top-level, used by key handlers and physics) ---
+function requestJump(){
+  // buffer the intent; update() will consume it if possible
+  player.jumpBuffer = PHYS.jumpBuffer;
+}
+
+function doJump(){
+  player.vy = -PHYS.jumpVel;
+  player.grounded = false;
+  player.coyote = 0;
+  anim.state = "jump";
+  anim.playedJumpOnce = false; // let the jump animation play from start
+}
 
 /* Parallax */
 var parallax = { cloudsNearX:0, cloudsFarX:0, treeX:0 };
@@ -650,19 +663,6 @@ function loop(){
   var now = performance.now();
   var dt  = Math.min(0.05, (now - _lastT) / 1000); // clamp 50ms
   _lastT = now;
-
-function requestJump(){
-  // buffer the intent; update() will consume it if possible
-  player.jumpBuffer = PHYS.jumpBuffer;
-}
-
-function doJump(){
-  player.vy = -PHYS.jumpVel;
-  player.grounded = false;
-  player.coyote = 0;
-  anim.state = "jump";
-  anim.playedJumpOnce = false; // let the jump animation play from start
-}
 
   update(dt);
   render();
