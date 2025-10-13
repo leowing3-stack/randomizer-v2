@@ -330,14 +330,20 @@ function doJump(){
   player.grounded = false;
   player.coyote = 0;
   anim.state = "jump";
-  anim.playedJumpOnce = false; // let the jump animation play from start
-}
+  anim.playedJumpOnce = false;
 
+  // SMALL forward carry if moving
+if (player.vx !== 0) player.vx = player.facing * (PHYS.walkSpeed + 10);
+}
 /* Parallax */
 var parallax = { cloudsNearX:0, cloudsFarX:0, treeX:0 };
 
 /* Scene */
+/* Scene */
 var houses=[], fences=[], pines=[];
+
+/* One-way platform segments (world coordinates) */
+var PLATFORMS = [];
 
 /* Tileset Atlas + tweak */
 var atlas=null;
@@ -622,8 +628,10 @@ function setCategory(kind){
 
 function buildScene(){
   buildHouses();
-  buildFences();
+  buildFences();      // still draws ground fences between ground houses
   buildParallax();
+  buildPlatforms();   // NEW
+  placeHousesOnPlatforms(); // NEW
 }
 function buildHouses(){
   houses=[];
@@ -655,6 +663,62 @@ function buildParallax(){
     pines.push({x:x+randInt(x+7,-4,6), rows:h});
   }
 }
+function buildPlatforms(){
+  // Clear and create 3 “rows” of platforms across the world
+  PLATFORMS = [];
+
+  // Choose heights (screen y) — all above the ground but visible
+  var rows = [
+    GROUND_Y - 20, // low ledges
+    GROUND_Y - 36, // mid
+    GROUND_Y - 52  // high
+  ];
+
+  // Make a few long segments with gaps you can jump across
+  var segLen = 96;   // px
+  var gap    = 48;   // px
+
+  for (var r=0; r<rows.length; r++){
+    var y = rows[r];
+    var x = 32 + r*16; // small stagger so they don’t line up perfectly
+    while (x < worldW - 64){
+      PLATFORMS.push({ x:x, y:y, w:segLen, h:6, row:r });
+      x += segLen + gap + ((r%2)?16:0);
+    }
+  }
+}
+
+/* Optionally place houses on platforms (some on ground, some on ledges) */
+function placeHousesOnPlatforms(){
+  // Cycle target base levels for variety: ground -> row0 -> row1 -> row2 -> back to ground...
+  var baseTargets = ["ground", 0, 1, 2];
+
+  for (var i=0;i<houses.length;i++){
+    var h = houses[i];
+    var choice = baseTargets[i % baseTargets.length];
+
+    if (choice === "ground"){
+      h.baseY = GROUND_Y;
+      continue;
+    }
+    // Find a platform segment that covers the house X
+    var p = findPlatformUnderX(h.x, choice);
+    if (p){
+      // baseY = top surface of platform
+      h.baseY = p.y;
+    } else {
+      h.baseY = GROUND_Y; // fallback
+    }
+  }
+}
+function findPlatformUnderX(x, row){
+  for (var i=0;i<PLATFORMS.length;i++){
+    var p = PLATFORMS[i];
+    if (p.row===row && x >= p.x && x <= p.x + p.w) return p;
+  }
+  return null;
+}
+
 
 /* ================= GAME LOOP ================= */
 /* PATCH START: dt loop + acceleration physics */
@@ -693,12 +757,50 @@ function update(dt){
   }
 
   // --- VERTICAL PHYSICS ---
+   // --- VERTICAL PHYSICS ---
   if (!player.grounded){
     player.vy += PHYS.gravity * dt;
     if (player.vy > PHYS.termVel) player.vy = PHYS.termVel;
   }
 
+  var prevY = player.y;   // <— add this
   player.y += player.vy * dt;
+
+  // --- One-way platform collisions: land only when falling and crossing top surface ---
+  var landedOnPlatform = false;
+  if (player.vy >= 0){ // falling or resting
+    for (var i=0;i<PLATFORMS.length;i++){
+      var p = PLATFORMS[i];
+      var withinX = (player.x >= p.x) && (player.x <= p.x + p.w);
+      var crossedTop = (prevY <= p.y) && (player.y >= p.y);
+      if (withinX && crossedTop){
+        player.y = p.y;
+        player.vy = 0;
+        player.grounded = true;
+        landedOnPlatform = true;
+        break;
+      }
+    }
+  }
+  
+  // ground collision at GROUND_Y
+  if (!landedOnPlatform){
+    if (player.y >= GROUND_Y){
+      player.y = GROUND_Y;
+      player.vy = 0;
+      if (!player.grounded){
+        player.grounded = true;
+        // if a jump was buffered just before landing, consume it now
+        if (player.jumpBuffer > 0){
+          player.jumpBuffer = 0;
+          doJump();
+          player.grounded = false;
+        }
+      }
+    } else {
+      player.grounded = false;
+    }
+  }
 
   // ground collision at GROUND_Y
   if (player.y >= GROUND_Y){
@@ -825,6 +927,20 @@ function drawTreeline(){
   }
   ctx.restore();
 }
+function drawPlatforms(){
+  // Simple beams with a little drop shadow
+  for (var i=0;i<PLATFORMS.length;i++){
+    var p = PLATFORMS[i];
+    var sx = p.x - cameraX;
+
+    // shadow
+    fillRect(sx, p.y+1, p.w, p.h, 0x2b1b30);
+    // deck
+    fillRect(sx, p.y,   p.w, p.h, 0x5f4db0); // placeholder color; swap to tiles later
+    // top highlight
+    fillRect(sx, p.y-1, p.w, 1,   0xbcaeff);
+  }
+}
 
 function drawGround(){
   // grass lip — use up to 4 variant tiles
@@ -833,6 +949,8 @@ function drawGround(){
     var idx = variants[( (x+cameraX)/TILE ) % variants.length | 0];
     drawTileIndex(idx, x, GROUND_Y-8);
   }
+    // Platforms on top of ground
+  drawPlatforms();
   // purple soil body
   for (var y=GROUND_Y; y<canvas.height; y+=TILE){
     for (var x=0; x<canvas.width; x+=TILE){
@@ -844,7 +962,9 @@ function drawGround(){
 
 function drawBuilding(h){
   var screenX = h.x - cameraX;
-  var x = screenX - Math.floor(h.w/2), y = GROUND_Y - h.h;
+  var baseY = (typeof h.baseY === "number") ? h.baseY : GROUND_Y;
+  var x = screenX - Math.floor(h.w/2);
+  var y = baseY - h.h;
 
   if (h.kind==='cabin'){
     drawBlock(map.cabin, 4,3, x,y);
