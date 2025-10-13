@@ -246,7 +246,7 @@ var PHYS = {
 /* PATCH END */
 /* PATCH START: define keys state */
 var keys = { left:false, right:false, up:false };
-/* PATCH END *
+/* PATCH END */
 /* === PLAYER SPRITE CONFIG (folders + filenames) === */
 var PLAYER_SPR = {
   scale: 1,   // bump to 2 if tiny
@@ -365,20 +365,20 @@ function loadPlayerSprites(){
 /* ================= BOOT ================= */
 window.addEventListener('DOMContentLoaded', function(){
   wireUI();
-Promise.all([
-  loadAtlas("./SocialBurstRandomizer/sprites/socialburst_tileset.png"),
-  loadPlayerSprites(),
-  hydrate()
-])
-.catch(function(err){
-  console.warn("Boot continuing despite error:", err);
-})
-.then(function(){
-  setCategory('events');
-  updateSavedBadge();
-  requestAnimationFrame(loop);
+  Promise.all([
+    loadAtlas("./SocialBurstRandomizer/sprites/socialburst_tileset.png"),
+    loadPlayerSprites(),
+    hydrate()
+  ])
+  .catch(function(err){
+    console.warn("Boot continuing despite error:", err);
+  })
+  .then(function(){
+    setCategory('events');
+    updateSavedBadge();
+    requestAnimationFrame(loop);
+  });
 });
-
 function wireUI(){
   tabEvents.onclick=function(){ setCategory('events'); };
   tabDeals.onclick=function(){ setCategory('deals'); };
