@@ -2,8 +2,15 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
-<title>SocialBurst — Swipe Randomizer</title>
+<title>SocialBurst — 8-Bit Explorer</title>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
+
+<!-- =========================================================
+     SOCIALBURST 8-BIT EXPLORER (vanilla HTML/CSS/JS)
+     - Replace CSV_URL with your “Today” tab publish-to-web CSV
+     - Uses assets from ./SocialBurstRandomizer/ (fonts, logo)
+     - Drop this file into GitHub Pages and go
+     ========================================================= -->
 
 <!-- Fonts from your project (paths must remain intact) -->
 <style>
@@ -29,118 +36,189 @@
     --white:#ffffff;
     --black:#000000;
 
-    /* neutrals / layout */
     --ink:#0f0f12;
     --ink-2:#3a3a44;
-    --bg:#ffffff;
-    --radius:18px;
-    --shadow:0 10px 24px rgba(0,0,0,.18);
+
+    --sky:#c7e6ff;
+    --ground:#1b132b;      /* deep purple ground */
+    --grass:#2b1b4b;       /* darker stripe for depth */
+    --pixel: 4px;          /* base “pixel” size for blocky look */
+    --radius: 12px;
+    --shadow: 0 10px 24px rgba(0,0,0,.18);
   }
 
   * { box-sizing: border-box; }
   html, body { height:100%; }
   body{
     margin:0;
-    background: var(--bg);
+    font-family: Lexend, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial;
     color: var(--ink);
-    font-family: Lexend, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
-    line-height:1.35;
-    overflow-x:hidden;
+    background: linear-gradient(#dff1ff, var(--sky) 55%, var(--ground) 55%, var(--grass) 56%) no-repeat fixed;
+    image-rendering: pixelated; /* crispy edges on scaled blocks */
+    -webkit-font-smoothing: antialiased;
+    overflow:hidden;
   }
 
-  /* Top bar */
   header.topbar{
-    position: sticky; top:0; inset-inline:0; z-index:40;
-    background: var(--white);
-    border-bottom:1px solid rgba(0,0,0,.06);
+    position: fixed; top:0; left:0; right:0; z-index:50;
     display:flex; align-items:center; gap:12px;
-    padding:12px 14px;
+    padding:10px 14px;
+    background: rgba(255,255,255,0.7);
+    backdrop-filter: blur(6px);
+    border-bottom:1px solid rgba(0,0,0,.08);
   }
-  .brand{
-    display:flex; align-items:center; gap:12px; min-width:160px;
-  }
-  .brand img{ width:48px; height:48px; object-fit:contain; }
-  .brand .name{
-    font-family: BrotherBold, sans-serif; font-size:24px; color:var(--purple); letter-spacing:.3px;
-  }
+  .brand{ display:flex; align-items:center; gap:10px; }
+  .brand img{ width:40px; height:40px; object-fit:contain; }
+  .brand .name{ font-family: BrotherBold, sans-serif; color:var(--purple); font-size:20px; letter-spacing:.3px; }
   .spacer{ flex:1; }
 
   .pill-group{
     display:inline-flex; border:2px solid var(--purple); border-radius:999px; overflow:hidden; background:transparent;
   }
   .pill{
-    padding:8px 14px; border:none; background:transparent; color:var(--purple);
-    font-family: BrotherBold, sans-serif; cursor:pointer; letter-spacing:.2px;
+    padding:6px 12px; border:none; background:transparent; color:var(--purple);
+    font-family: BrotherBold, sans-serif; cursor:pointer; letter-spacing:.2px; font-size:14px;
   }
   .pill[aria-pressed="true"]{ background:var(--purple); color:var(--white); }
 
   .saved-btn{
-    display:inline-flex; align-items:center; gap:8px; margin-left:10px;
-    padding:8px 12px; background:transparent; color:var(--purple);
-    border:2px solid var(--purple); border-radius:999px; font-family: BrotherBold, sans-serif; cursor:pointer;
+    display:inline-flex; align-items:center; gap:8px;
+    padding:6px 10px; background:transparent; color:var(--purple);
+    border:2px solid var(--purple); border-radius:999px; font-family: BrotherBold, sans-serif; cursor:pointer; font-size:14px;
   }
   .badge{
-    min-width:22px; height:22px; padding:0 6px; border-radius:999px;
-    background:var(--yellow); color:var(--black);
+    min-width:20px; height:20px; padding:0 6px; border-radius:999px; background:var(--yellow); color:var(--black);
     display:inline-flex; align-items:center; justify-content:center; font-size:12px; font-weight:800;
   }
 
-  main{ display:grid; place-items:center; padding:18px 12px 28px; }
-
-  /* Deck */
-  #deck{
-    position:relative;
-    width:min(92vw, 520px);
-    height:min(76vh, 640px);
-    max-height:78dvh;
+  /* WORLD VIEWPORT */
+  .viewport{
+    position: fixed; inset:60px 0 84px 0; /* leave room for header & controls */
+    overflow:hidden;
   }
-  .card{
-    position:absolute; inset:0; background:var(--white); border-radius:var(--radius);
-    box-shadow: var(--shadow); padding:18px 18px 82px;
-    display:grid; grid-template-rows:auto auto auto 1fr; gap:8px;
-    user-select:none; touch-action:none;
-  }
-  .card h2{
-    margin:0; font-size:22px; line-height:1.2; color:var(--purple); font-family: BrotherBold, sans-serif;
-  }
-  .when-badge{
-    display:inline-block; background:var(--yellow); color:var(--black);
-    padding:6px 10px; border-radius:999px; font-weight:800; font-size:14px;
-    justify-self:start;
-  }
-  .venue{ color:var(--ink-2); font-weight:700; margin-top:-4px; }
-  .short{
-    margin-top:6px; color:var(--ink-2);
-    display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;
+  .world{
+    position:absolute; left:0; top:0; height:100%;
+    width: 50000px; /* plenty of side-scroll runway */
+    will-change: transform;
+    transition: transform 0.1s linear;
   }
 
-  /* Drag hints */
-  .ghost-label{
-    position:absolute; top:16px; padding:6px 10px; border-radius:8px; border:2px solid currentColor;
-    font-weight:800; letter-spacing:.3px; opacity:0; transform:scale(.92); pointer-events:none;
-    transition:opacity .15s ease, transform .15s ease;
+  /* Ground stripe for 8-bit look */
+  .ground{
+    position:absolute; left:0; right:0; bottom:0; height: 28%;
+    background:
+      linear-gradient(to top, var(--ground) 0, var(--ground) 65%, var(--grass) 66%, transparent 66%);
   }
-  .ghost-dislike{ left:16px; color:#161616; }
-  .ghost-like{ right:16px; color:var(--purple); }
 
-  /* Buttons below deck */
-  #controls{
-    width:min(92vw,520px); display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-top:16px;
+  /* Player “pixel dude” */
+  .player-wrap{
+    position:absolute; left:50%; bottom: 25%;
+    transform: translateX(-50%);
+    width: calc(var(--pixel) * 9);
+    height: calc(var(--pixel) * 12);
+    z-index: 5;
   }
-  .btn{
-    padding:14px 16px; border-radius:999px; border:2px solid var(--purple); background:transparent; color:var(--purple);
-    font-weight:800; cursor:pointer; box-shadow:0 2px 0 rgba(0,0,0,.06);
+  .player{
+    width:100%; height:100%; position:relative;
+    image-rendering: pixelated;
   }
-  .btn.primary{ background:var(--purple); color:var(--white); }
+  /* Build a little pixel person from blocks */
+  .px{ position:absolute; width:var(--pixel); height:var(--pixel); background:var(--black); }
+  /* head */
+  .px.h1{ left: calc(var(--pixel)*4); top:0; background:#f2c199; }
+  .px.h2{ left: calc(var(--pixel)*3); top:var(--pixel); background:#f2c199; }
+  .px.h3{ left: calc(var(--pixel)*4); top:var(--pixel); background:#f2c199; }
+  .px.h4{ left: calc(var(--pixel)*5); top:var(--pixel); background:#f2c199; }
+  .px.h5{ left: calc(var(--pixel)*4); top:calc(var(--pixel)*2); background:#f2c199; }
+  /* body */
+  .px.b1{ left: calc(var(--pixel)*3); top:calc(var(--pixel)*4); background:var(--purple); }
+  .px.b2{ left: calc(var(--pixel)*4); top:calc(var(--pixel)*4); background:var(--purple); }
+  .px.b3{ left: calc(var(--pixel)*5); top:calc(var(--pixel)*4); background:var(--purple); }
+  .px.b4{ left: calc(var(--pixel)*3); top:calc(var(--pixel)*5); background:var(--purple); }
+  .px.b5{ left: calc(var(--pixel)*4); top:calc(var(--pixel)*5); background:var(--purple); }
+  .px.b6{ left: calc(var(--pixel)*5); top:calc(var(--pixel)*5); background:var(--purple); }
+  /* legs */
+  .px.l1{ left: calc(var(--pixel)*3); top:calc(var(--pixel)*7); background:#333; }
+  .px.l2{ left: calc(var(--pixel)*5); top:calc(var(--pixel)*7); background:#333; }
+  .px.l3{ left: calc(var(--pixel)*3); top:calc(var(--pixel)*8); background:#333; }
+  .px.l4{ left: calc(var(--pixel)*5); top:calc(var(--pixel)*8); background:#333; }
+  .px.s1{ left: calc(var(--pixel)*3); top:calc(var(--pixel)*9); background:#000; } /* shoes */
+  .px.s2{ left: calc(var(--pixel)*5); top:calc(var(--pixel)*9); background:#000; }
 
-  /* Empty state */
-  .empty{
-    position:absolute; inset:0;
-    border:2px dashed rgba(0,0,0,.15); border-radius:var(--radius);
-    display:grid; place-items:center; text-align:center; padding:24px;
+  /* Up-arrow hint (shows only when aligned with a house) */
+  .hint{
+    position:absolute; left:50%; transform:translateX(-50%);
+    bottom: calc(25% + var(--pixel)*14);
+    padding:4px 8px;
+    background:var(--yellow);
+    color:var(--black);
+    border-radius:8px;
+    font-weight:800;
+    font-size:12px;
+    display:none;
+    z-index:6;
   }
-  .empty h3{ margin:0 0 10px; }
-  .empty p{ margin:0 0 16px; color:var(--ink-2); }
+  .hint.show{ display:block; }
+
+  /* Houses (events) */
+  .house{
+    --w: 220px;
+    position:absolute; bottom: 28%;
+    width: var(--w);
+    transform: translateY(0);
+    text-align:center;
+  }
+  .house .roof{
+    width: calc(var(--w) * 0.9);
+    margin: 0 auto;
+    height: 0;
+    border-left: calc(var(--w) * 0.45) solid transparent;
+    border-right: calc(var(--w) * 0.45) solid transparent;
+    border-bottom: calc(var(--w) * 0.30) solid var(--purple);
+    position: relative;
+    filter: drop-shadow(0 4px 0 rgba(0,0,0,0.2));
+  }
+  .house .roof .title{
+    position:absolute; bottom:-6px; left:50%; transform:translateX(-50%);
+    color:var(--white);
+    font-family: BrotherBold, sans-serif;
+    font-size: 14px;
+    width: 92%;
+    white-space: nowrap;
+    overflow:hidden;
+    text-overflow: ellipsis;
+  }
+  .house .body{
+    width: 100%;
+    height: 120px;
+    background: #fff;
+    border: 4px solid #2d1c4a;
+    border-radius: 6px;
+    box-shadow: 0 6px 0 rgba(0,0,0,0.2);
+    display:grid; place-items:center;
+    padding: 10px;
+  }
+  .house .body .when{
+    background: var(--yellow); color:var(--black);
+    padding:4px 8px; border-radius:999px; font-weight:800; font-size:12px; margin-bottom:6px;
+  }
+  .house .door{
+    position:absolute; bottom:0; left:50%; transform:translateX(-50%);
+    width:40px; height:60px; background:#2d1c4a; border:3px solid #140825; border-bottom:none;
+  }
+
+  /* Controls (mobile friendly) */
+  .controls{
+    position: fixed; left:0; right:0; bottom:10px; z-index:60;
+    display:flex; justify-content:center; gap:10px;
+  }
+  .ctrl{
+    padding:10px 14px; border-radius:10px; border:2px solid var(--purple); background:#fff; color:var(--purple);
+    font-weight:800; cursor:pointer; min-width:60px; text-align:center;
+    box-shadow:0 2px 0 rgba(0,0,0,.08);
+  }
+  .ctrl.primary{ background:var(--purple); color:#fff; }
+  .ctrl[disabled]{ opacity:.4; pointer-events:none; }
 
   /* Modal */
   .modal-backdrop{
@@ -148,7 +226,7 @@
     display:none; align-items:center; justify-content:center; padding:16px; z-index:100;
   }
   .modal{
-    background:var(--white); color:var(--ink); width:min(94vw,640px); max-height:86dvh; overflow:auto;
+    background:#fff; color:var(--ink); width:min(94vw,640px); max-height:86dvh; overflow:auto;
     border-radius:16px; box-shadow: var(--shadow); padding:18px;
   }
   .modal header{ display:flex; align-items:flex-start; gap:12px; margin-bottom:8px; }
@@ -156,11 +234,13 @@
   .modal .close{ border:none; background:transparent; font-size:24px; line-height:1; cursor:pointer; color:#444; }
   .modal .meta{ display:grid; gap:6px; margin:10px 0 16px; color:var(--ink-2); font-weight:700; }
   .modal .actions{ display:flex; flex-wrap:wrap; gap:10px; margin-top:12px; }
+  .btn{ padding:10px 14px; border-radius:999px; border:2px solid var(--purple); background:transparent; color:var(--purple); font-weight:800; cursor:pointer; }
+  .btn.primary{ background:var(--purple); color:#fff; }
 
   /* Saved drawer */
   #saved-panel{
     position:fixed; right:0; top:0; height:100%; width:min(92vw,420px);
-    background:var(--white); color:var(--ink);
+    background:#fff; color:var(--ink);
     border-left:1px solid rgba(0,0,0,.08);
     transform:translateX(100%); transition:transform .25s ease; z-index:120;
     display:grid; grid-template-rows:auto 1fr;
@@ -168,15 +248,10 @@
   #saved-panel.open{ transform:translateX(0); }
   #saved-panel header{ display:flex; align-items:center; justify-content:space-between; padding:14px 16px; border-bottom:1px solid rgba(0,0,0,.08); }
   #saved-list{ overflow:auto; padding:12px; display:grid; gap:10px; }
-  .saved-item{ border:1px solid rgba(0,0,0,.12); border-radius:12px; padding:12px; display:grid; gap:6px; background:var(--white); }
+  .saved-item{ border:1px solid rgba(0,0,0,.12); border-radius:12px; padding:12px; display:grid; gap:6px; background:#fff; }
   .saved-item .title{ font-weight:800; color:var(--purple); }
   .saved-item .meta{ color:var(--ink-2); font-weight:700; }
   .saved-item .row{ display:flex; gap:8px; flex-wrap:wrap; margin-top:6px; }
-
-  /* Reduced motion */
-  @media (prefers-reduced-motion: reduce){
-    .card{ transition:none !important; }
-  }
 </style>
 </head>
 <body>
@@ -198,23 +273,32 @@
   </button>
 </header>
 
-<main>
-  <section id="deck" aria-live="polite" aria-label="Swipe deck">
-    <!-- cards injected here -->
-    <div id="empty" class="empty" hidden>
-      <div>
-        <h3>No more for today</h3>
-        <p>Try reshuffling to see the deck again.</p>
-        <button id="btn-reshuffle" class="btn primary">Reshuffle</button>
-      </div>
-    </div>
-  </section>
+<div class="viewport" id="viewport" aria-label="Explorer viewport">
+  <div class="world" id="world" style="transform:translateX(0)">
+    <div class="ground"></div>
 
-  <div id="controls" aria-label="Swipe controls">
-    <button id="btn-left" class="btn" aria-label="Nope (Left)">❌ Nope</button>
-    <button id="btn-right" class="btn primary" aria-label="Details (Right)">✅ Details</button>
+    <!-- Player (fixed in viewport) -->
+    <div class="player-wrap" id="playerWrap">
+      <div class="player" id="player">
+        <!-- tiny pixel-person blocks -->
+        <div class="px h1"></div><div class="px h2"></div><div class="px h3"></div><div class="px h4"></div><div class="px h5"></div>
+        <div class="px b1"></div><div class="px b2"></div><div class="px b3"></div><div class="px b4"></div><div class="px b5"></div><div class="px b6"></div>
+        <div class="px l1"></div><div class="px l2"></div><div class="px l3"></div><div class="px l4"></div><div class="px s1"></div><div class="px s2"></div>
+      </div>
+      <div class="hint" id="hint">Press ↑ to enter</div>
+    </div>
+
+    <!-- Houses injected here -->
+    <div id="houses"></div>
   </div>
-</main>
+</div>
+
+<!-- Controls -->
+<div class="controls" aria-label="Controls">
+  <button class="ctrl" id="btn-left">◀︎</button>
+  <button class="ctrl primary" id="btn-up" disabled>↑ Enter</button>
+  <button class="ctrl" id="btn-right">▶︎</button>
+</div>
 
 <!-- Details Modal -->
 <div id="modal-backdrop" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-title">
@@ -224,8 +308,8 @@
       <button id="modal-close" class="close" aria-label="Close details">×</button>
     </header>
     <div class="meta">
-      <div id="modal-when" class="when-badge"></div>
-      <div id="modal-venue" class="venue"></div>
+      <div id="modal-when" class="btn" style="cursor:default"></div>
+      <div id="modal-venue"></div>
       <div id="modal-address"></div>
       <div id="modal-phone"></div>
     </div>
@@ -248,37 +332,37 @@
 </aside>
 
 <script>
-/* ============================================================
-   CONFIG — Replace this with your "Today" tab CSV publish URL
-   ============================================================ */
-var CSV_URL = "https://docs.google.com/spreadsheets/d/<SHEET_ID>/pub?gid=<GID_TODAY>&single=true&output=csv";
+/* ===================== CONFIG ===================== */
+var CSV_URL = "https://docs.google.com/spreadsheets/d/<SHEET_ID>/pub?gid=<GID_TODAY>&single=true&output=csv"; // <- replace me
+var CATEGORY = 'events'; // default tab
 
-/* ============================================================
-   STATE
-   ============================================================ */
-var CURRENT_KIND = 'events';   // 'events' | 'deals'
-var DECK = [];                 // working deck (shuffled)
-var INDEX = 0;                 // pointer
-var EVENTS = [];               // hydrated items
-var DEALS = [];
-var CURRENT_ITEM = null;
-var MODAL_OPEN = false;
+/* ===================== STATE ===================== */
+var ITEMS = [];      // current category items
+var EVENTS = [];
+var DEALS  = [];
+var playerX = 0;     // world-space coordinate
+var worldOffset = 0; // translateX of .world (parallax)
+var speed = 10;      // px per step
+var canEnterId = null;
 
-/* ============================================================
-   ELEMENTS
-   ============================================================ */
-var deckEl = document.getElementById('deck');
-var emptyEl = document.getElementById('empty');
-var btnReshuffle = document.getElementById('btn-reshuffle');
+/* ===================== ELEMENTS ===================== */
+var worldEl = document.getElementById('world');
+var housesEl = document.getElementById('houses');
+var hintEl = document.getElementById('hint');
 var btnLeft = document.getElementById('btn-left');
 var btnRight = document.getElementById('btn-right');
+var btnUp = document.getElementById('btn-up');
+var viewportEl = document.getElementById('viewport');
+
 var tabEvents = document.getElementById('tab-events');
 var tabDeals  = document.getElementById('tab-deals');
 var savedBtn  = document.getElementById('btn-saved');
 var savedCountEl = document.getElementById('saved-count');
+var savedPanel = document.getElementById('saved-panel');
+var savedClose = document.getElementById('saved-close');
+var savedList  = document.getElementById('saved-list');
 
 var modalBackdrop = document.getElementById('modal-backdrop');
-var modalClose = document.getElementById('modal-close');
 var modalTitle = document.getElementById('modal-title');
 var modalWhen = document.getElementById('modal-when');
 var modalVenue = document.getElementById('modal-venue');
@@ -286,87 +370,67 @@ var modalAddress = document.getElementById('modal-address');
 var modalPhone = document.getElementById('modal-phone');
 var modalDesc = document.getElementById('modal-desc');
 var modalLinks = document.getElementById('modal-links');
-var modalSave = document.getElementById('modal-save');
 var modalIcs = document.getElementById('modal-ics');
+var modalSave = document.getElementById('modal-save');
+var modalClose = document.getElementById('modal-close');
 
-var savedPanel = document.getElementById('saved-panel');
-var savedClose = document.getElementById('saved-close');
-var savedList  = document.getElementById('saved-list');
-
-/* ============================================================
-   BOOT
-   ============================================================ */
+/* ===================== BOOT ===================== */
 window.addEventListener('DOMContentLoaded', function(){
-  attachUI();
-  hydrateFromSheet().then(function(){ setCategory('events'); updateSavedBadge(); });
+  wireUI();
+  hydrate().then(function(){
+    setCategory('events');
+    updateSavedBadge();
+    loop();
+  });
 });
 
-/* ============================================================
-   UI WIRING
-   ============================================================ */
-function attachUI(){
+/* ===================== UI ===================== */
+function wireUI(){
+  btnLeft.addEventListener('click', function(){ move(-1); });
+  btnRight.addEventListener('click', function(){ move(1); });
+  btnUp.addEventListener('click', tryEnter);
+
+  document.addEventListener('keydown', function(e){
+    if (modalBackdrop.style.display === 'flex'){
+      if (e.key === 'Escape'){ closeModal(); }
+      return;
+    }
+    if (e.key === 'ArrowLeft')  move(-1);
+    if (e.key === 'ArrowRight') move(1);
+    if (e.key === 'ArrowUp' || e.key === 'Enter') tryEnter();
+  });
+
   tabEvents.addEventListener('click', function(){ setCategory('events'); });
   tabDeals.addEventListener('click',  function(){ setCategory('deals'); });
-
-  btnLeft.addEventListener('click', function(){ simulateSwipe('left'); });
-  btnRight.addEventListener('click', function(){ simulateSwipe('right'); });
-
-  btnReshuffle.addEventListener('click', function(){
-    shuffleActive();
-    renderNextCard(true);
-  });
 
   savedBtn.addEventListener('click', toggleSavedPanel);
   savedClose.addEventListener('click', function(){ setSavedPanel(false); });
 
-  document.addEventListener('keydown', function(e){
-    if (MODAL_OPEN){
-      if (e.key === 'Escape') closeDetails();
-      return;
-    }
-    if (e.key === 'ArrowLeft') simulateSwipe('left');
-    if (e.key === 'ArrowRight') simulateSwipe('right');
-  });
-
-  modalBackdrop.addEventListener('click', function(e){
-    if (e.target === modalBackdrop) closeDetails();
-  });
-  modalClose.addEventListener('click', closeDetails);
-
-  modalSave.addEventListener('click', function(){
-    if (CURRENT_ITEM) saveItem(CURRENT_ITEM);
-  });
+  modalBackdrop.addEventListener('click', function(e){ if (e.target===modalBackdrop) closeModal(); });
+  modalClose.addEventListener('click', closeModal);
+  modalSave.addEventListener('click', function(){ if (openItem) saveItem(openItem); });
 }
 
-/* ============================================================
-   DATA HYDRATION (CSV)
-   ============================================================ */
-function hydrateFromSheet(){
-  return fetch(CSV_URL, { cache: 'no-store' })
-    .then(function(res){
-      if (!res.ok) throw new Error('Fetch failed ' + res.status);
-      return res.text();
-    })
-    .then(function(csvText){
-      var objects = parseCsvToObjects(csvText);
-      var parts = partitionByType(objects);
-      EVENTS = parts.events;
-      DEALS  = parts.deals;
+/* ===================== DATA ===================== */
+function hydrate(){
+  return fetch(CSV_URL, {cache:'no-store'})
+    .then(function(res){ if(!res.ok) throw new Error(res.status); return res.text(); })
+    .then(function(text){
+      var objects = parseCsvToObjects(text);
+      var pr = partitionByType(objects);
+      EVENTS = pr.events; DEALS = pr.deals;
       if (!EVENTS.length && !DEALS.length){
-        // fallback
-        var samples = getFallbackSamples();
-        EVENTS = samples.events;
-        DEALS  = samples.deals;
+        var fb = fallback();
+        EVENTS = fb.events; DEALS = fb.deals;
       }
     })
     .catch(function(){
-      var samples = getFallbackSamples();
-      EVENTS = samples.events;
-      DEALS  = samples.deals;
+      var fb = fallback();
+      EVENTS = fb.events; DEALS = fb.deals;
     });
 }
 
-/* Robust CSV → objects with header-insensitive mapping */
+/* CSV parsing with quotes */
 function parseCsvToObjects(text){
   if (!text || !text.trim()) return [];
   var rows = csvToRows(text);
@@ -377,287 +441,198 @@ function parseCsvToObjects(text){
     var row = rows[i];
     if (row.every(function(c){ return !String(c||'').trim(); })) continue;
     var obj = {};
-    for (var j=0; j<headers.length; j++){
-      var key = headers[j] || ('col_'+j);
-      obj[key] = (row[j] == null ? '' : String(row[j])).trim();
-    }
-    items.push(normalizeCsvRow(obj, i));
+    for (var j=0; j<headers.length; j++) obj[headers[j] || ('col_'+j)] = (row[j] == null ? '' : String(row[j])).trim();
+    items.push(normalize(obj, i));
   }
   return items;
 }
-
 function csvToRows(text){
-  var rows = [];
-  var cur = '';
-  var row = [];
-  var inQuotes = false;
-  for (var i=0; i<text.length; i++){
-    var ch = text[i];
-    var next = text[i+1];
-    if (ch === '"'){
-      if (inQuotes && next === '"'){ cur += '"'; i++; }
-      else { inQuotes = !inQuotes; }
-    } else if (ch === ',' && !inQuotes){
-      row.push(cur); cur = '';
-    } else if ((ch === '\n' || ch === '\r') && !inQuotes){
-      if (ch === '\r' && next === '\n') i++;
-      row.push(cur); rows.push(row); row = []; cur = '';
-    } else {
-      cur += ch;
-    }
+  var rows=[],cur='',row=[],inQ=false;
+  for (var i=0;i<text.length;i++){
+    var ch=text[i], nx=text[i+1];
+    if (ch === '"'){ if(inQ && nx === '"'){ cur+='"'; i++; } else inQ=!inQ; }
+    else if (ch===',' && !inQ){ row.push(cur); cur=''; }
+    else if ((ch==='\n'||ch==='\r') && !inQ){ if(ch==='\r'&&nx==='\n') i++; row.push(cur); rows.push(row); row=[]; cur=''; }
+    else cur+=ch;
   }
-  row.push(cur); rows.push(row);
-  return rows;
+  row.push(cur); rows.push(row); return rows;
 }
-
-function normalizeCsvRow(obj, idx){
-  function pick(names, def){
-    for (var k=0; k<names.length; k++){
-      var n = names[k];
-      if (obj.hasOwnProperty(n) && String(obj[n]).trim()!=='') return String(obj[n]).trim();
-    }
-    return def || '';
+function normalize(obj, idx){
+  function pick(list, def){ for (var k=0;k<list.length;k++){ var v=obj[list[k]]; if (v!=null && String(v).trim()!=='') return String(v).trim(); } return def||''; }
+  var type = pick(['type','category'],'').toLowerCase() === 'deal' ? 'deal' : 'event';
+  var title= pick(['title','name']);
+  var venue= pick(['venue','venue_name','business','place']);
+  var when = pick(['when','time','window','start_datetime']);
+  var desc = pick(['description','details','desc']);
+  var link = pick(['link','url','website','source_url']);
+  var addr = pick(['address','addr','location']);
+  var phone= pick(['phone','tel','telephone']);
+  var s = parseTime(pick(['start_datetime'], ''));
+  var e = parseTime(pick(['end_datetime'], ''));
+  if (s || e){
+    var sTxt = s ? s.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '';
+    var eTxt = e ? e.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '';
+    if (s && e) when = 'Today ' + sTxt + '–' + eTxt;
+    else if (s) when = 'Today ' + sTxt;
+    else if (e) when = 'Until ' + eTxt + ' today';
   }
-  var type = pick(['type','category'], '').toLowerCase();
-  // Treat 'deal' as deal; anything else defaults to event
-  var canonicalType = (type === 'deal') ? 'deal' : 'event';
-
-  var title = pick(['title','name']);
-  var when  = pick(['when','time','window','start_datetime']); // accepts raw if given
-  var venue = pick(['venue','venue_name','business','place']);
-  var short = pick(['short','teaser','summary']);
-  var description = pick(['description','details','desc']);
-  var link  = pick(['link','url','website','source_url']);
-  var phone = pick(['phone','tel','telephone']);
-  var address = pick(['address','addr','location']);
-  var lat = parseFloat(pick(['lat','latitude'], ''));
-  var lng = parseFloat(pick(['lng','lon','longitude'], ''));
-  var tags = pick(['tags'], '');
-
-  // If start/end given as "10:00 am  8/9" style, rebuild 'when'
-  var sParsed = parseDMYTime(pick(['start_datetime'], ''));
-  var eParsed = parseDMYTime(pick(['end_datetime'], ''));
-  var whenStr = when;
-  if (sParsed || eParsed){
-    var sTxt = sParsed ? sParsed.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '';
-    var eTxt = eParsed ? eParsed.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '';
-    if (sParsed && eParsed) whenStr = 'Today ' + sTxt + '–' + eTxt;
-    else if (sParsed)       whenStr = 'Today ' + sTxt;
-    else if (eParsed)       whenStr = 'Until ' + eTxt + ' today';
-  }
-
   return {
-    id: stableIdFrom({title:title, venue:venue, when:whenStr, idx:idx}),
-    type: canonicalType,
-    title: title || 'Untitled',
-    when: whenStr || 'Today',
-    venue: venue || '',
-    short: short,
-    description: description,
-    link: link || undefined,
-    phone: phone || undefined,
-    address: address || undefined,
-    lat: isFinite(lat) ? lat : undefined,
-    lng: isFinite(lng) ? lng : undefined,
-    tags: tags ? tags.split(',').map(function(s){return s.trim();}).filter(Boolean) : undefined
+    id: stableId(title+'|'+venue+'|'+when+'|'+idx),
+    type:type, title:title||'Untitled', venue:venue||'', when:when||'Today',
+    description:desc, short:'', link:link||undefined, address:addr||undefined, phone:phone||undefined
+  };
+}
+function parseTime(s){
+  var t=String(s||'').toLowerCase().replace(/\u00a0|\u202f/g,' ').trim();
+  var m=t.match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm|a\.m\.|p\.m\.)?\s+(\d{1,2})\/(\d{1,2})$/i);
+  if(!m) return null;
+  var h=parseInt(m[1],10), mm=m[2]?parseInt(m[2],10):0, ap=(m[3]||'').replace(/\./g,'').toLowerCase();
+  var d=parseInt(m[4],10), mo=parseInt(m[5],10), y=(new Date()).getFullYear();
+  if(ap==='pm'&&h<12)h+=12; if(ap==='am'&&h===12)h=0;
+  var dt=new Date(y,mo-1,d,h,mm,0,0); return isNaN(+dt)?null:dt;
+}
+function partitionByType(items){
+  var ev=[], de=[];
+  for (var i=0;i<items.length;i++) (items[i].type==='deal'?de:ev).push(items[i]);
+  return {events:ev, deals:de};
+}
+function fallback(){
+  return {
+    events:[
+      {id:'e1', type:'event', title:'Pub Quiz Night', when:'Today 19:30–21:30', venue:'The Jolly Sailor', description:'£50 bar tab • Teams up to 6', link:'#'},
+      {id:'e2', type:'event', title:'Open Mic', when:'Today 20:00–22:30', venue:'The Horn', description:'Sign-ups from 19:00', link:'#'},
+      {id:'e3', type:'event', title:'Board Game Social', when:'Today 18:00–22:00', venue:'White Lion', description:'Bring a game or join a table', link:'#'}
+    ],
+    deals:[
+      {id:'d1', type:'deal', title:'2-for-1 Pizzas', when:'Valid until 17:00', venue:'Pinsa Lab', description:'Dine-in only', link:'#'},
+      {id:'d2', type:'deal', title:'£5 Cocktails', when:'Today 17:00–19:00', venue:'Peahen', description:'House list only', link:'#'}
+    ]
   };
 }
 
-/* "10:00 am  8/9" → Date (this year, local). Returns null if not match */
-function parseDMYTime(str){
-  var s = String(str||'').toLowerCase().replace(/\u00a0|\u202f/g,' ').trim();
-  if (!s) return null;
-  var m = s.match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm|a\.m\.|p\.m\.)?\s+(\d{1,2})\/(\d{1,2})$/i);
-  if (!m) return null;
-  var hh = parseInt(m[1],10);
-  var mm = m[2]?parseInt(m[2],10):0;
-  var ap = (m[3]||'').replace(/\./g,'').toLowerCase();
-  var d  = parseInt(m[4],10);
-  var mo = parseInt(m[5],10);
-  var year = (new Date()).getFullYear();
-  if (ap==='pm' && hh<12) hh+=12;
-  if (ap==='am' && hh===12) hh=0;
-  var dt = new Date(year, mo-1, d, hh, mm, 0, 0);
-  return isNaN(+dt) ? null : dt;
-}
-
-function partitionByType(items){
-  var events = [], deals = [];
-  for (var i=0;i<items.length;i++){
-    if (items[i].type === 'deal') deals.push(items[i]);
-    else events.push(items[i]);
-  }
-  return { events: events, deals: deals };
-}
-
-/* ============================================================
-   DECK & SWIPE
-   ============================================================ */
+/* ===================== WORLD & HOUSES ===================== */
 function setCategory(kind){
-  if (kind!=='events' && kind!=='deals') return;
-  CURRENT_KIND = kind;
-  tabEvents.setAttribute('aria-pressed', String(kind==='events'));
-  tabDeals.setAttribute('aria-pressed',  String(kind==='deals'));
-  tabEvents.setAttribute('aria-selected', String(kind==='events'));
-  tabDeals.setAttribute('aria-selected',  String(kind==='deals'));
+  CATEGORY = (kind==='deals') ? 'deals' : 'events';
+  tabEvents.setAttribute('aria-pressed', String(CATEGORY==='events'));
+  tabDeals.setAttribute('aria-pressed',  String(CATEGORY==='deals'));
+  tabEvents.setAttribute('aria-selected', String(CATEGORY==='events'));
+  tabDeals.setAttribute('aria-selected',  String(CATEGORY==='deals'));
 
-  DECK = (kind==='events' ? EVENTS.slice() : DEALS.slice());
-  shuffle(DECK);
-  INDEX = 0;
-  renderNextCard(true);
+  ITEMS = (CATEGORY==='events'?EVENTS:DEALS).slice();
+  buildHouses();
+  centerOn(0);
 }
+function buildHouses(){
+  housesEl.innerHTML = '';
+  var x = 200; // starting offset
+  var gap = 380; // distance between houses
 
-function shuffleActive(){
-  DECK = (CURRENT_KIND==='events' ? EVENTS.slice() : DEALS.slice());
-  shuffle(DECK);
-  INDEX = 0;
-}
+  for (var i=0;i<ITEMS.length;i++){
+    var it = ITEMS[i];
+    var h = document.createElement('div');
+    h.className = 'house';
+    h.style.left = x + 'px';
+    h.dataset.id = it.id;
 
-function shuffle(arr){
-  for (var i=arr.length-1;i>0;i--){
-    var j = Math.floor(Math.random()*(i+1));
-    var t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+    var roof = document.createElement('div'); roof.className='roof';
+    var title = document.createElement('div'); title.className='title'; title.textContent = it.title;
+    roof.appendChild(title);
+
+    var body = document.createElement('div'); body.className='body';
+    var when = document.createElement('div'); when.className='when'; when.textContent = it.when || 'Today';
+    var venue= document.createElement('div'); venue.textContent = it.venue || '';
+    body.appendChild(when); body.appendChild(venue);
+
+    var door = document.createElement('div'); door.className='door';
+
+    h.appendChild(roof); h.appendChild(body); h.appendChild(door);
+    housesEl.appendChild(h);
+
+    x += gap;
   }
 }
 
-function renderNextCard(reset){
-  var existing = deckEl.querySelectorAll('.card');
-  for (var i=0;i<existing.length;i++) existing[i].remove();
-
-  if (INDEX >= DECK.length){
-    emptyEl.hidden = false;
-    CURRENT_ITEM = null;
-    return;
-  }
-  emptyEl.hidden = true;
-
-  var item = DECK[INDEX];
-  CURRENT_ITEM = item;
-
-  var card = document.createElement('article');
-  card.className = 'card';
-  card.setAttribute('tabindex','0');
-  card.setAttribute('aria-label', item.title);
-
-  var gl = document.createElement('div'); gl.className='ghost-label ghost-dislike'; gl.textContent='Nope';
-  var gr = document.createElement('div'); gr.className='ghost-label ghost-like';    gr.textContent='Save';
-
-  var h2 = document.createElement('h2'); h2.textContent = item.title || '(Untitled)';
-  var when = document.createElement('div'); when.className='when-badge'; when.textContent = item.when || 'Today';
-  var venue = document.createElement('div'); venue.className='venue'; venue.textContent = item.venue || '';
-  var short = document.createElement('div'); short.className='short'; short.textContent = item.short || item.description || '';
-
-  card.appendChild(gl); card.appendChild(gr); card.appendChild(h2); card.appendChild(when); card.appendChild(venue); card.appendChild(short);
-  deckEl.appendChild(card);
-
-  attachDrag(card, item);
+/* ===================== MOVEMENT ===================== */
+function move(dir){
+  playerX += dir * speed;
+  if (playerX < 0) playerX = 0;
+  centerOn(playerX);
+  checkAlign();
 }
+function centerOn(px){
+  // Keep the player centered; move the world instead
+  var vpW = viewportEl.clientWidth;
+  worldOffset = -px + (vpW/2);
+  if (worldOffset > 0) worldOffset = 0; // don’t scroll past start
+  worldEl.style.transform = 'translateX(' + worldOffset + 'px)';
+}
+function checkAlign(){
+  var vpCenter = viewportEl.clientWidth/2;
+  var threshold = 60; // how close to center to show "enter"
+  var chosen = null;
 
-function attachDrag(cardEl, item){
-  var startX=0, startY=0, curX=0, curY=0, dragging=false;
-
-  function onDown(x,y){ dragging=true; startX=x; startY=y; cardEl.style.transition='transform 0s'; }
-  function onMove(x,y){
-    if (!dragging) return;
-    curX = x - startX; curY = y - startY;
-    var rot = Math.max(-7, Math.min(7, (curX/10)));
-    cardEl.style.transform = 'translate('+curX+'px,'+curY+'px) rotate('+rot+'deg)';
-    var likeGhost = cardEl.querySelector('.ghost-like');
-    var nopeGhost = cardEl.querySelector('.ghost-dislike');
-    var intensity = Math.min(1, Math.abs(curX)/120);
-    if (curX > 0){
-      likeGhost.style.opacity = String(intensity);
-      likeGhost.style.transform = 'scale('+(0.92 + 0.08*intensity)+')';
-      nopeGhost.style.opacity = '0';
-      nopeGhost.style.transform = 'scale(0.92)';
-    } else if (curX < 0){
-      nopeGhost.style.opacity = String(intensity);
-      nopeGhost.style.transform = 'scale('+(0.92 + 0.08*intensity)+')';
-      likeGhost.style.opacity = '0';
-      likeGhost.style.transform = 'scale(0.92)';
-    } else {
-      likeGhost.style.opacity = '0'; likeGhost.style.transform = 'scale(0.92)';
-      nopeGhost.style.opacity = '0'; nopeGhost.style.transform = 'scale(0.92)';
+  var kids = housesEl.children;
+  for (var i=0;i<kids.length;i++){
+    var rect = kids[i].getBoundingClientRect();
+    var houseCenter = rect.left + rect.width/2;
+    if (Math.abs(houseCenter - vpCenter) < threshold){
+      chosen = kids[i];
+      break;
     }
   }
-  function onUp(){
-    if (!dragging) return;
-    dragging=false;
-    var committed = Math.abs(curX) > 120;
-    cardEl.style.transition = 'transform .22s ease';
-    if (!committed){
-      cardEl.style.transform = 'translate(0,0) rotate(0)';
-      var likeGhost = cardEl.querySelector('.ghost-like');
-      var nopeGhost = cardEl.querySelector('.ghost-dislike');
-      likeGhost.style.opacity='0'; likeGhost.style.transform='scale(0.92)';
-      nopeGhost.style.opacity='0'; nopeGhost.style.transform='scale(0.92)';
-      return;
-    }
-    var dir = (curX > 0) ? 'right' : 'left';
-    var offX = (dir==='right') ? (window.innerWidth*0.8) : -(window.innerWidth*0.8);
-    cardEl.style.transform = 'translate('+offX+'px,'+curY+'px) rotate('+(dir==='right'?12:-12)+'deg)';
-
-    setTimeout(function(){
-      if (dir==='right') openDetails(item);
-      INDEX++;
-      renderNextCard();
-    }, 180);
+  if (chosen){
+    canEnterId = chosen.dataset.id;
+    hintEl.classList.add('show');
+    btnUp.disabled = false;
+  } else {
+    canEnterId = null;
+    hintEl.classList.remove('show');
+    btnUp.disabled = true;
   }
-
-  // Mouse
-  cardEl.addEventListener('mousedown', function(e){ e.preventDefault(); onDown(e.clientX, e.clientY); });
-  window.addEventListener('mousemove', function(e){ onMove(e.clientX, e.clientY); });
-  window.addEventListener('mouseup', function(){ onUp(); });
-
-  // Touch
-  cardEl.addEventListener('touchstart', function(e){
-    var t=e.changedTouches[0]; onDown(t.clientX, t.clientY);
-  }, {passive:true});
-  cardEl.addEventListener('touchmove', function(e){
-    var t=e.changedTouches[0]; onMove(t.clientX, t.clientY);
-  }, {passive:true});
-  cardEl.addEventListener('touchend', function(){ onUp(); }, {passive:true});
 }
 
-function simulateSwipe(direction){
-  var card = deckEl.querySelector('.card');
-  if (!card) return;
-  var item = CURRENT_ITEM;
-  var curY = 0;
-  card.style.transition = 'transform .22s ease';
-  var offX = (direction==='right') ? (window.innerWidth*0.8) : -(window.innerWidth*0.8);
-  card.style.transform = 'translate('+offX+'px,'+curY+'px) rotate('+(direction==='right'?12:-12)+'deg)';
-  setTimeout(function(){
-    if (direction==='right' && item) openDetails(item);
-    INDEX++;
-    renderNextCard();
-  }, 180);
+/* ===================== GAME LOOP (subtle idle bob) ===================== */
+var t0 = performance.now();
+function loop(now){
+  var t = now || performance.now();
+  var bob = Math.sin((t - t0)/300) * 2;
+  document.getElementById('playerWrap').style.transform = 'translateX(-50%) translateY(' + bob + 'px)';
+  requestAnimationFrame(loop);
 }
 
-/* ============================================================
-   MODAL & SAVED
-   ============================================================ */
-function openDetails(item){
-  MODAL_OPEN = true;
+/* ===================== ENTER / MODAL ===================== */
+var openItem = null;
+function tryEnter(){
+  if (!canEnterId) return;
+  var it = findItem(canEnterId);
+  if (!it) return;
+  openItem = it;
+  openModal(it);
+}
+function findItem(id){
+  for (var i=0;i<ITEMS.length;i++) if (ITEMS[i].id===id) return ITEMS[i];
+  return null;
+}
+function openModal(item){
   modalTitle.textContent = item.title || '(Untitled)';
-  modalWhen.textContent  = item.when || 'Today';
+  modalWhen.textContent = item.when || 'Today';
   modalVenue.textContent = item.venue || '';
   modalAddress.textContent = item.address || '';
-  modalPhone.textContent   = item.phone || '';
-  modalDesc.textContent    = item.description || '';
+  modalPhone.textContent = item.phone || '';
+  modalDesc.textContent = item.description || '';
 
   while (modalLinks.firstChild) modalLinks.removeChild(modalLinks.firstChild);
   if (item.link){
     var a = document.createElement('a');
     a.className='btn';
     a.href = item.link; a.target='_blank'; a.rel='noopener';
-    a.textContent='Open link';
+    a.textContent = 'Open link';
     modalLinks.appendChild(a);
   }
   if (item.address){
     var g = document.createElement('a');
     g.className='btn';
-    g.href = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(item.address);
+    g.href = 'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(item.address);
     g.target='_blank'; g.rel='noopener';
     g.textContent='Get directions';
     modalLinks.appendChild(g);
@@ -665,172 +640,88 @@ function openDetails(item){
   if (item.phone){
     var p = document.createElement('a');
     p.className='btn';
-    p.href = 'tel:' + item.phone.replace(/\s+/g,'');
+    p.href = 'tel:'+ item.phone.replace(/\s+/g,'');
     p.textContent='Call';
     modalLinks.appendChild(p);
   }
+  modalIcs.href = makeIcs(item);
 
-  var ics = makeIcsFor(item);
-  modalIcs.href = ics;
-
-  modalBackdrop.style.display='flex';
+  modalBackdrop.style.display = 'flex';
+}
+function closeModal(){
+  modalBackdrop.style.display = 'none';
 }
 
-function closeDetails(){
-  MODAL_OPEN = false;
-  modalBackdrop.style.display='none';
-}
-
-function getSaved(){
-  try{ return JSON.parse(localStorage.getItem('sb_saved') || '[]'); }
-  catch(e){ return []; }
-}
-function setSaved(arr){
-  localStorage.setItem('sb_saved', JSON.stringify(arr));
-}
-function isSaved(id){
-  var arr = getSaved();
-  for (var i=0;i<arr.length;i++){ if (arr[i].id===id) return true; }
-  return false;
-}
-
+/* ===================== SAVED ===================== */
+function getSaved(){ try{ return JSON.parse(localStorage.getItem('sb_saved')||'[]'); }catch(e){ return []; } }
+function setSaved(arr){ localStorage.setItem('sb_saved', JSON.stringify(arr)); }
+function updateSavedBadge(){ savedCountEl.textContent = String(getSaved().length); }
 function saveItem(item){
   var arr = getSaved();
-  for (var i=0;i<arr.length;i++){ if (arr[i].id===item.id) { closeDetails(); return; } }
-  arr.push(item);
-  setSaved(arr);
-  updateSavedBadge();
-  renderSavedList();
-  closeDetails();
+  for (var i=0;i<arr.length;i++) if (arr[i].id===item.id) { closeModal(); return; }
+  arr.push(item); setSaved(arr); updateSavedBadge(); renderSavedList(); closeModal();
 }
-
 function removeSaved(id){
   var arr = getSaved().filter(function(x){ return x.id!==id; });
-  setSaved(arr);
-  updateSavedBadge();
-  renderSavedList();
+  setSaved(arr); updateSavedBadge(); renderSavedList();
 }
-
-function updateSavedBadge(){
-  var n = getSaved().length;
-  savedCountEl.textContent = String(n);
-}
-
 function renderSavedList(){
-  while (savedList.firstChild) savedList.removeChild(savedList.firstChild);
+  savedList.innerHTML='';
   var arr = getSaved();
-  if (!arr.length){
-    var d = document.createElement('div');
-    d.textContent = 'No saved items yet.';
-    savedList.appendChild(d);
-    return;
-  }
+  if (!arr.length){ savedList.textContent='No saved items yet.'; return; }
   for (var i=0;i<arr.length;i++){
     var it = arr[i];
-    var card = document.createElement('div');
-    card.className='saved-item';
-
-    var title = document.createElement('div'); title.className='title'; title.textContent = it.title || '(Untitled)';
-    var meta  = document.createElement('div'); meta.className='meta'; meta.textContent = (it.when||'Today') + (it.venue?(' • ' + it.venue):'');
-
-    var row = document.createElement('div'); row.className='row';
-
-    var bDet = document.createElement('button'); bDet.className='btn'; bDet.textContent='Details';
-    bDet.addEventListener('click', (function(copy){ return function(){ openDetails(copy); }; })(it));
-
-    var bRem = document.createElement('button'); bRem.className='btn primary'; bRem.textContent='Remove';
-    bRem.addEventListener('click', (function(id){ return function(){ removeSaved(id); }; })(it.id));
-
-    row.appendChild(bDet); row.appendChild(bRem);
+    var card = document.createElement('div'); card.className='saved-item';
+    var title = document.createElement('div'); title.className='title'; title.textContent = it.title;
+    var meta  = document.createElement('div'); meta.className='meta'; meta.textContent = (it.when||'Today') + (it.venue?(' • '+it.venue):'');
+    var row   = document.createElement('div'); row.className='row';
+    var det = document.createElement('button'); det.className='btn'; det.textContent='Details';
+    det.addEventListener('click', (function(copy){ return function(){ openModal(copy); }; })(it));
+    var rem = document.createElement('button'); rem.className='btn primary'; rem.textContent='Remove';
+    rem.addEventListener('click', (function(id){ return function(){ removeSaved(id); }; })(it.id));
+    row.appendChild(det); row.appendChild(rem);
     card.appendChild(title); card.appendChild(meta); card.appendChild(row);
     savedList.appendChild(card);
   }
 }
-
-function toggleSavedPanel(){
-  var open = !savedPanel.classList.contains('open');
-  setSavedPanel(open);
-}
+function toggleSavedPanel(){ setSavedPanel(!savedPanel.classList.contains('open')); }
 function setSavedPanel(open){
-  if (open){
-    renderSavedList();
-    savedPanel.classList.add('open');
-    savedBtn.setAttribute('aria-expanded','true');
-    savedPanel.setAttribute('aria-hidden','false');
-  } else {
-    savedPanel.classList.remove('open');
-    savedBtn.setAttribute('aria-expanded','false');
-    savedPanel.setAttribute('aria-hidden','true');
-  }
+  if (open){ renderSavedList(); savedPanel.classList.add('open'); savedBtn.setAttribute('aria-expanded','true'); savedPanel.setAttribute('aria-hidden','false'); }
+  else { savedPanel.classList.remove('open'); savedBtn.setAttribute('aria-expanded','false'); savedPanel.setAttribute('aria-hidden','true'); }
 }
 
-/* ============================================================
-   ICS GENERATION
-   ============================================================ */
-function makeIcsFor(item){
-  // Very simple VEVENT; if no time, set today + 1hr
-  var now = new Date();
-  var start = parseDMYTimeFromWhen(item.when) || new Date(now.getFullYear(), now.getMonth(), now.getDate(), 19, 0, 0);
-  var end   = new Date(start.getTime() + 60*60*1000);
-
-  function fmt(dt){
-    function p(n){ return (n<10?'0':'')+n; }
-    return dt.getUTCFullYear() + p(dt.getUTCMonth()+1) + p(dt.getUTCDate()) + 'T' + p(dt.getUTCHours()) + p(dt.getUTCMinutes()) + p(dt.getUTCSeconds()) + 'Z';
-  }
-
-  var lines = [
-    'BEGIN:VCALENDAR',
-    'VERSION:2.0',
-    'PRODID:-//SocialBurst//Swipe Randomizer//EN',
-    'BEGIN:VEVENT',
-    'UID:'+ item.id + '@socialburst',
-    'DTSTAMP:' + fmt(new Date()),
-    'DTSTART:' + fmt(start),
-    'DTEND:'   + fmt(end),
-    'SUMMARY:' + escIcs(item.title||''),
-    'LOCATION:'+ escIcs(item.venue||''),
-    'DESCRIPTION:' + escIcs((item.description||'') + (item.link?(' ' + item.link):'')),
-    'END:VEVENT',
-    'END:VCALENDAR'
+/* ===================== ICS ===================== */
+function makeIcs(item){
+  var now=new Date();
+  var start = parseWhenTime(item.when) || new Date(now.getFullYear(), now.getMonth(), now.getDate(), 19,0,0);
+  var end   = new Date(start.getTime()+60*60*1000);
+  function p(n){ return (n<10?'0':'')+n; }
+  function fmt(dt){ return dt.getUTCFullYear()+p(dt.getUTCMonth()+1)+p(dt.getUTCDate())+'T'+p(dt.getUTCHours())+p(dt.getUTCMinutes())+p(dt.getUTCSeconds())+'Z'; }
+  var lines=[
+    'BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//SocialBurst//8bit//EN','BEGIN:VEVENT',
+    'UID:'+item.id+'@socialburst','DTSTAMP:'+fmt(new Date()),
+    'DTSTART:'+fmt(start),'DTEND:'+fmt(end),
+    'SUMMARY:'+esc(item.title||''),'LOCATION:'+esc(item.venue||''),
+    'DESCRIPTION:'+esc((item.description||'')+(item.link?(' '+item.link):'')),
+    'END:VEVENT','END:VCALENDAR'
   ];
-  var blob = new Blob([lines.join('\r\n')], {type:'text/calendar'});
-  return URL.createObjectURL(blob);
+  return URL.createObjectURL(new Blob([lines.join('\r\n')], {type:'text/calendar'}));
+}
+function esc(s){ return String(s).replace(/([,;])/g,'\\$1').replace(/\n/g,'\\n'); }
+function parseWhenTime(str){
+  var m=String(str||'').toLowerCase().match(/today\s+(\d{1,2}):(\d{2})/);
+  if(!m) return null; var h=+m[1], mi=+m[2]; var n=new Date(); return new Date(n.getFullYear(),n.getMonth(),n.getDate(),h,mi,0,0);
 }
 
-function escIcs(s){
-  return String(s).replace(/([,;])/g, '\\$1').replace(/\n/g,'\\n');
-}
+/* ===================== HELPERS ===================== */
+function stableId(s){ var h=0; for (var i=0;i<s.length;i++){ h=((h<<5)-h)+s.charCodeAt(i); h|=0; } return 'sb_'+Math.abs(h); }
 
-// Try to parse "Today 19:00–21:00" or "Today 19:00"
-function parseDMYTimeFromWhen(str){
-  var s = String(str||'').toLowerCase();
-  var m = s.match(/today\s+(\d{1,2}):(\d{2})/);
-  if (!m) return null;
-  var hh = parseInt(m[1],10), mm = parseInt(m[2],10);
-  var now = new Date();
-  return new Date(now.getFullYear(), now.getMonth(), now.getDate(), hh, mm, 0, 0);
-}
+/* ===================== RENDER LOOP TICK ===================== */
+function loop(){ /* handled by requestAnimationFrame above */ }
 
-/* ============================================================
-   UTILS & FALLBACK
-   ============================================================ */
-function stableIdFrom(seed){
-  var base = (seed.title||'') + '|' + (seed.venue||'') + '|' + (seed.when||'') + '|' + (seed.idx||'');
-  var h=0; for (var i=0;i<base.length;i++){ h=((h<<5)-h)+base.charCodeAt(i); h|=0; }
-  return 'sb_'+Math.abs(h);
-}
-
-function getFallbackSamples(){
-  var events = [
-    { id:'e1', type:'event', title:'Pub Quiz Night', when:'Today 19:30–21:30', venue:'The Jolly Sailor, St Albans', short:'£50 bar tab • Teams up to 6', description:'Classic general knowledge quiz. Arrive early!', link:'#' },
-    { id:'e2', type:'event', title:'Open Mic Evening', when:'Today 20:00–22:30', venue:'The Horn, St Albans', short:'Sign-ups from 19:00', description:'Acoustic sets, spoken word welcome.', link:'#' },
-    { id:'e3', type:'event', title:'Board Game Social', when:'Today 18:00–22:00', venue:'The White Lion', short:'Bring a game or join a table', description:'Casual night, all levels welcome.', link:'#' }
-  ];
-  var deals = [
-    { id:'d1', type:'deal', title:'2-for-1 Pizzas', when:'Valid until 17:00', venue:'Pinsa Lab', short:'Dine-in only', description:'Show this screen at the till to redeem.', link:'#' },
-    { id:'d2', type:'deal', title:'£5 Cocktails', when:'Today 17:00–19:00', venue:'Peahen', short:'House list only', description:'Happy hour special.', link:'#' }
-  ];
-  return { events:events, deals:deals };
+/* ===================== MISC ===================== */
+function centerPlayerOnClosestHouse(){
+  // optional helper to snap to house; not used by default
 }
 </script>
 </body>
