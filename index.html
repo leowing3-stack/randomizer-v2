@@ -241,9 +241,9 @@ var TILE = 16, GROUND_Y = 120;
 var PHYS = {
   walkSpeed: 60,
   deadzone: 36,
-  gravity: 900,     // leave this
-  jumpVel: 360,     // was 280; ~72px max rise
-  termVel: 700,     // a touch higher fall cap so the arc still feels good
+  gravity: 900,   // keep gravity feel
+  jumpVel: 420,   // was 280; ~98px rise -> comfortably above tall platforms
+  termVel: 800,   // keep fall slick at higher peaks
   coyoteTime: 0.08,
   jumpBuffer: 0.12
 };
@@ -684,44 +684,80 @@ function buildParallax(){
 function buildPlatforms(){
   PLATFORMS = [];
 
-  // Start above ground and climb upward
-  var x = 48;
-  var y = GROUND_Y - 60;    // first ledge ~60px above ground
-  var gapX = 150;           // horizontal spacing (tweak 140–180)
-  var stepY = 80;           // vertical spacing (safe with current jump)
-  var ledges = 10;          // number of steps up
-  var width = 96;           // each ledge width
+  // How high can we jump comfortably?
+  var maxRise = (PHYS.jumpVel * PHYS.jumpVel) / (2 * PHYS.gravity); // ≈ 98 with jumpVel 420
+  var margin  = 10;                           // need to clear by a bit
+  var safeRise = Math.floor(maxRise - margin); // ≈ 88
 
-  for (var i=0; i<ledges; i++){
+  // Make the first ledge sit ABOVE the tallest ground house (windmill is 4 tiles = 64px)
+  var tallestHouse = 64;                       // 4 * TILE
+  var firstY = GROUND_Y - (tallestHouse + 16); // ~80px above ground
+
+  // Step height should be comfortably reachable:
+  var stepY = Math.max(48, Math.min(safeRise, 96)); // clamp within a nice feel range
+
+  // Horizontal spacing/width
+  var gapMin = 140, gapMax = 180;
+  var width  = 104;                             // a hair wider than before
+
+  // Build a tall zig-zag up toward the top of the world
+  var x = 48;
+  var y = firstY;
+
+  // Keep adding until we go well above the screen
+  var i = 0;
+  while (y > -600) { // climb ~600px above ground; tweak if you want even taller
     PLATFORMS.push({ x:x, y:y, w:width, h:6, row:i });
 
-    // zigzag: right, then back-left a bit, repeat
-    x += (i % 2 === 0) ? gapX : -gapX * 0.6;
-    y -= stepY; // climb into the sky
+    // stagger horizontally: right then back-left
+    var gapX = Math.floor(gapMin + Math.random() * (gapMax - gapMin));
+    x += (i % 2 === 0) ? gapX : -Math.floor(gapX * 0.6);
+
+    // go up
+    y -= stepY;
+    i++;
   }
+
+  // OPTIONAL: sprinkle a few short "helper" ledges next to the main line
+  for (var k = 0; k < PLATFORMS.length; k += 3) {
+    var p = PLATFORMS[k];
+    // small shelf to the side
+    var sideW = 56;
+    var sx = (k % 2 === 0) ? p.x + p.w + 40 : p.x - sideW - 40;
+    PLATFORMS.push({ x: sx, y: p.y - Math.floor(stepY/2), w: sideW, h: 6, row: i + k });
+  }
+
+  // Update world height so vertical camera can travel high enough
+  var minY = PLATFORMS.reduce(function(m, p){ return Math.min(m, p.y); }, GROUND_Y);
+  WORLD_H = Math.max(WORLD_H || 0, (GROUND_Y - minY) + canvas.height + 80);
 }
 
-/* Optionally place houses on platforms (some on ground, some on ledges) */
 function placeHousesOnPlatforms(){
-  // Cycle target base levels for variety: ground -> row0 -> row1 -> row2 -> back to ground...
-  var baseTargets = ["ground", 0, 1, 2];
+  if (!PLATFORMS.length){ return; }
 
-  for (var i=0;i<houses.length;i++){
+  // Sort platforms by height (low to high) so we fill from ground upward
+  var plats = PLATFORMS.slice().sort(function(a,b){ return a.y - b.y; });
+
+  // We’ll cycle houses across platforms, nudging house.x to sit on the deck
+  for (var i = 0; i < houses.length; i++){
     var h = houses[i];
-    var choice = baseTargets[i % baseTargets.length];
 
-    if (choice === "ground"){
+    // Every 3rd house stays on ground to keep the base alive
+    if (i % 3 === 0) {
       h.baseY = GROUND_Y;
       continue;
     }
-    // Find a platform segment that covers the house X
-    var p = findPlatformUnderX(h.x, choice);
-    if (p){
-      // baseY = top surface of platform
-      h.baseY = p.y;
-    } else {
-      h.baseY = GROUND_Y; // fallback
-    }
+
+    // Pick a platform, rising as we advance through the list
+    var p = plats[i % plats.length];
+
+    // Snap the house horizontally so it actually sits on the segment
+    var houseHalf = Math.floor(h.w / 2);
+    var center    = Math.floor(p.x + p.w / 2);
+    h.x = Math.max(p.x + houseHalf, Math.min(center, p.x + p.w - houseHalf));
+
+    // Put the building on that platform surface
+    h.baseY = p.y;
   }
 }
 function findPlatformUnderX(x, row){
