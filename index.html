@@ -314,6 +314,8 @@ var CATEGORY='events', EVENTS=[], DEALS=[], ITEMS=[];
 var worldW=256*6, cameraX=0, cameraY=0, canEnterId=null, currentOpen=null;
 var WORLD_H = 1200;   // rough world height; tweak later
 var VDEADZONE = 40;   // vertical deadzone like horizontal
+var WORLD_TOP = -800, WORLD_BOTTOM = 0; // vertical clamp; updated after building platforms
+
 
 /* Player */
 var player = {
@@ -727,9 +729,11 @@ function buildPlatforms(){
     PLATFORMS.push({ x: sx, y: p.y - Math.floor(stepY/2), w: sideW, h: 6, row: i + k });
   }
 
-  // Update world height so vertical camera can travel high enough
+  // How high can we look? (remember: smaller y = higher in world)
   var minY = PLATFORMS.reduce(function(m, p){ return Math.min(m, p.y); }, GROUND_Y);
-  WORLD_H = Math.max(WORLD_H || 0, (GROUND_Y - minY) + canvas.height + 80);
+  // Allow camera to go a bit above the highest ledge
+  WORLD_TOP = Math.min(-800, minY - 80);   // negative allowed so we can scroll up
+  WORLD_BOTTOM = 0;                         // bottom of view near ground
 }
 
 function placeHousesOnPlatforms(){
@@ -875,13 +879,7 @@ anim.t += dt;
   if (cameraX < 0) cameraX = 0;
   if (cameraX > worldW - canvas.width) cameraX = worldW - canvas.width;
   // vertical follow
-var topDZ = (player.y - VDEADZONE) - canvas.height/2;
-var botDZ = (player.y + VDEADZONE) - canvas.height/2;
 
-if (cameraY > topDZ) cameraY = Math.max(topDZ, cameraY - 160*dt);
-if (cameraY < botDZ) cameraY = Math.min(botDZ, cameraY + 160*dt);
-
-cameraY = Math.max(0, Math.min(cameraY, Math.max(0, WORLD_H - canvas.height)));
 
   // --- PARALLAX ---
   parallax.cloudsNearX += 20*dt;
@@ -913,8 +911,8 @@ function render(){
   }
 
   // Clouds layer (tile the cloud index)
-  drawCloudLayer(map.cloud, parallax.cloudsFarX, 12, 0.15);
-  drawCloudLayer(map.cloud, parallax.cloudsNearX, 28, 0.30);
+  drawCloudLayer(map.cloud, parallax.cloudsFarX, 12 - cameraY, 0.15);
+  drawCloudLayer(map.cloud, parallax.cloudsNearX, 28 - cameraY, 0.30);
 
   // Tree silhouettes (parallax)
   drawTreeline();
@@ -983,18 +981,19 @@ function drawPlatforms(){
 
 function drawGround(){
   // grass lip — use up to 4 variant tiles
-  var variants = Array.isArray(map.grass)?map.grass:[map.grass];
-  for (var x=0; x<canvas.width; x+=TILE){
-    var idx = variants[( (x+cameraX)/TILE ) % variants.length | 0];
-    drawTileIndex(idx, x, GROUND_Y-8);
+ for (var x=0; x<canvas.width; x+=TILE){
+  var idx = variants[( (x+cameraX)/TILE ) % variants.length | 0];
+  drawTileIndex(idx, x, (GROUND_Y-8) - cameraY);
+}
   }
     // Platforms on top of ground
   drawPlatforms();
   // purple soil body
-  for (var y=GROUND_Y; y<canvas.height; y+=TILE){
-    for (var x=0; x<canvas.width; x+=TILE){
-      drawTileIndex(map.dirt, x, y);
-      if (y%32===0 && ((x+cameraX)%48===0)) drawTileIndex(map.rock, x, y); // sprinkle rocks
+for (var y = GROUND_Y - cameraY; y < canvas.height; y += TILE){
+  for (var x=0; x<canvas.width; x+=TILE){
+    drawTileIndex(map.dirt, x, y);
+    if ( ( (y + cameraY) % 32 === 0 ) && (((x+cameraX) % 48) === 0) ) {
+      drawTileIndex(map.rock, x, y);
     }
   }
 }
