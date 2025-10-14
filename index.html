@@ -878,7 +878,15 @@ anim.t += dt;
   if (cameraX < rightDZ) cameraX = Math.min(rightDZ, cameraX + 120*dt);
   if (cameraX < 0) cameraX = 0;
   if (cameraX > worldW - canvas.width) cameraX = worldW - canvas.width;
-  // vertical follow
+// --- VERTICAL CAMERA FOLLOW ---
+var targetY = player.y - canvas.height * 0.45;  // slight bias above center
+var smooth  = 8 * dt;                            // follow speed; 6–10 feels good
+if (smooth > 1) smooth = 1;
+cameraY += (targetY - cameraY) * smooth;
+
+// clamp camera to world vertical bounds (WORLD_TOP is negative, WORLD_BOTTOM near 0)
+if (cameraY < WORLD_TOP)    cameraY = WORLD_TOP;
+if (cameraY > WORLD_BOTTOM) cameraY = WORLD_BOTTOM;
 
 
   // --- PARALLAX ---
@@ -981,19 +989,22 @@ function drawPlatforms(){
 
 function drawGround(){
   // grass lip — use up to 4 variant tiles
- for (var x=0; x<canvas.width; x+=TILE){
-  var idx = variants[( (x+cameraX)/TILE ) % variants.length | 0];
-  drawTileIndex(idx, x, (GROUND_Y-8) - cameraY);
-}
+  var variants = Array.isArray(map.grass) ? map.grass : [map.grass];
+  for (var x = 0; x < canvas.width; x += TILE){
+    var idx = variants[(((x + cameraX) / TILE) % variants.length) | 0];
+    drawTileIndex(idx, x, (GROUND_Y - 8) - cameraY);
   }
-    // Platforms on top of ground
+
+  // Platforms (drawn above the ground)
   drawPlatforms();
+
   // purple soil body
-for (var y = GROUND_Y - cameraY; y < canvas.height; y += TILE){
-  for (var x=0; x<canvas.width; x+=TILE){
-    drawTileIndex(map.dirt, x, y);
-    if ( ( (y + cameraY) % 32 === 0 ) && (((x+cameraX) % 48) === 0) ) {
-      drawTileIndex(map.rock, x, y);
+  for (var y = GROUND_Y - cameraY; y < canvas.height; y += TILE){
+    for (var x = 0; x < canvas.width; x += TILE){
+      drawTileIndex(map.dirt, x, y);
+      if (((y + cameraY) % 32 === 0) && (((x + cameraX) % 48) === 0)) {
+        drawTileIndex(map.rock, x, y); // sprinkle rocks
+      }
     }
   }
 }
