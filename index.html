@@ -350,13 +350,14 @@ function doJump(){
   player.vy = -PHYS.jumpVel;
   player.grounded = false;
   player.coyote = 0;
-  setAnim("jump");                 // reset anim clock on takeoff
+  setAnim("jump");
   anim.playedJumpOnce = false;
 
-// preserve momentum + tiny boost
-if (Math.abs(player.vx) > 0) {
-  player.vx += player.facing * PHYS.jumpCarry;
-}
+  // preserve momentum + tiny boost
+  if (Math.abs(player.vx) > 0) {
+    player.vx += player.facing * PHYS.jumpCarry;
+  }
+} // ✅ CLOSE THIS HERE
 
 function landOn(surfaceY){
   player.y = surfaceY;
