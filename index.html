@@ -667,12 +667,43 @@ function setCategory(kind){
   player.x=16; cameraX=0; cameraY=0; canEnterId=null;
 }
 
+// Height helper: works whether you use the PNG cabin or the tiles
+function getHouseHeight(h){
+  // If you're drawing a PNG cabin, prefer its real height
+  if (h.kind === 'cabin' && typeof window.imgCabin !== 'undefined' && window.imgCabin){
+    return window.imgCabin.height || h.h;
+  }
+  // Defaults from the tileset (cabin/cottage 3 tiles high = 48px, windmill 4 tiles = 64px)
+  return h.h;
+}
+
+// Recompute vertical camera bounds so tall buildings fit
+function recomputeWorldBounds(){
+  // Find the highest (smallest) top edge among all houses
+  var minTop = GROUND_Y; // start at ground
+  for (var i=0;i<houses.length;i++){
+    var baseY = (typeof houses[i].baseY === 'number') ? houses[i].baseY : GROUND_Y;
+    var topY  = baseY - getHouseHeight(houses[i]); // world Y of roof peak/top
+    if (topY < minTop) minTop = topY;
+  }
+
+  // Give a little margin above the tallest sprite
+  var margin = 24; // pixels of headroom
+  // Allow camera to scroll up to just above that top
+  WORLD_TOP = Math.min(WORLD_TOP, Math.round(minTop - margin));
+  // Bottom stays the ground area
+  WORLD_BOTTOM = 0;
+}
+
 function buildScene(){
   buildHouses();
   buildFences();      // still draws ground fences between ground houses
   buildParallax();
   buildPlatforms();   // NEW
   placeHousesOnPlatforms(); // NEW
+  
+   // NEW: let the camera go high enough for tall sprites
+  recomputeWorldBounds();
 }
 function buildHouses(){
   houses=[];
