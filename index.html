@@ -1046,14 +1046,18 @@ function drawBuilding(h){
   var y = Math.round((baseY - h.h) - cameraY);
 
   if (h.kind === 'cabin'){
-  // Target size: current code expects 4x3 tiles (64x48). Scale the PNG to this.
-  var dw = 4 * TILE;  // 64
-  var dh = 3 * TILE;  // 48
   if (cabinReady){
-    ctx.drawImage(imgCabin, x, y, dw, dh);
+    // Draw the PNG at its original pixel size (no scaling)
+    var w = imgCabin.width;
+    var hgt = imgCabin.height;
+    ctx.drawImage(
+      imgCabin,
+      x + (64 - w) / 2,    // horizontally center it around the same tile area
+      y - (hgt - 48),      // shift upward so base sits on the ground
+      w, hgt
+    );
   } else {
-    // fallback to tileset until the image is loaded
-    drawBlock(map.cabin, 4, 3, x, y);
+    drawBlock(map.cabin, 4, 3, x, y); // fallback
   }
 }
 
