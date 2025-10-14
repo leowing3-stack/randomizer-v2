@@ -560,6 +560,12 @@ function drawBlock(topLeftIdx, wTiles, hTiles, dx, dy){
   }
 }
 
+/* Standalone cabin image */
+var imgCabin = new Image();
+var cabinReady = false;
+imgCabin.onload = function(){ cabinReady = true; };
+imgCabin.src = './SocialBurstRandomizer/sprites/buildings/cabin.png';
+
 /* ================= CSV & DATA ================= */
 function hydrate(){
   return fetch(CSV_URL, {cache:'no-store'})
@@ -1039,16 +1045,17 @@ function drawBuilding(h){
   var x = screenX - Math.floor(h.w/2);
   var y = Math.round((baseY - h.h) - cameraY);
 
-  if (h.kind==='cabin'){
-    drawBlock(map.cabin, 4,3, x, y);
-  } else if (h.kind==='cottage'){
-    drawBlock(map.cottage, 4,3, x, y);
-  } else { // windmill
-    drawBlock(map.windmill, 4,4, x, y);
-    var frame = Math.floor((Date.now()/160) % (Array.isArray(map.windmillBlades) ? map.windmillBlades.length : 1));
-    var bladeTopLeft = Array.isArray(map.windmillBlades) ? map.windmillBlades[frame] : map.windmillBlades;
-    drawBlock(bladeTopLeft, 4,4, x, y - 4);
+  if (h.kind === 'cabin'){
+  // Target size: current code expects 4x3 tiles (64x48). Scale the PNG to this.
+  var dw = 4 * TILE;  // 64
+  var dh = 3 * TILE;  // 48
+  if (cabinReady){
+    ctx.drawImage(imgCabin, x, y, dw, dh);
+  } else {
+    // fallback to tileset until the image is loaded
+    drawBlock(map.cabin, 4, 3, x, y);
   }
+}
 
   // label
   pixelText(h.title.toUpperCase(), x, y-10, 0x143C0D, h.w);
