@@ -499,7 +499,7 @@ function wireUI(){
     if (e.key==='ArrowLeft' || e.key==='a' || e.key==='A') keys.left = true;
     if (e.key==='ArrowRight'|| e.key==='d' || e.key==='D') keys.right= true;
     if (e.key==='ArrowUp'   || e.key==='w' || e.key==='W' || e.key==='Enter') keys.up=true;
-    if (e.key === 'Shift') keys.shift = false;
+    if (e.key === 'Shift') keys.shift = true;
 
 // === ADD: Jump controls ===
 if (e.code === 'Space') {
@@ -524,7 +524,7 @@ if (e.key === 'z' || e.key === 'Z') {
     if (e.key==='ArrowLeft' || e.key==='a' || e.key==='A') keys.left = false;
     if (e.key==='ArrowRight'|| e.key==='d' || e.key==='D') keys.right= false;
     if (e.key==='ArrowUp'   || e.key==='w' || e.key==='W' || e.key==='Enter') keys.up=false;
-    if (e.key === 'Shift') keys.shift = true;
+    if (e.key === 'Shift') keys.shift = false;
   });
 /* PATCH END */
 
@@ -893,16 +893,24 @@ anim.t += dt;
   if (cameraX < rightDZ) cameraX = Math.min(rightDZ, cameraX + 120*dt);
   if (cameraX < 0) cameraX = 0;
   if (cameraX > worldW - canvas.width) cameraX = worldW - canvas.width;
-// --- VERTICAL CAMERA FOLLOW ---
-var targetY = player.y - canvas.height * 0.45;  // slight bias above center
-var smooth  = 14 * dt; // tighter follow to stop lag
-if (smooth > 1) smooth = 1;
-cameraY += (targetY - cameraY) * smooth;
+// --- VERTICAL CAMERA FOLLOW (snappier, limited lag) ---
+var targetY = player.y - canvas.height * 0.45;
 
-// clamp camera to world vertical bounds (WORLD_TOP is negative, WORLD_BOTTOM near 0)
+// faster catch-up when rising, softer when falling
+var k = (player.vy < 0 ? 28 : 16) * dt;   // was 14*dt
+if (k > 1) k = 1;
+cameraY += (targetY - cameraY) * k;
+
+// hard cap the maximum lag so platforms never feel behind
+var maxLag = 20; // px
+var lag = targetY - cameraY;
+if (Math.abs(lag) > maxLag) {
+  cameraY = targetY - Math.sign(lag) * maxLag;
+}
+
+// clamp to world limits
 if (cameraY < WORLD_TOP)    cameraY = WORLD_TOP;
 if (cameraY > WORLD_BOTTOM) cameraY = WORLD_BOTTOM;
-
 
   // --- PARALLAX ---
   parallax.cloudsNearX += 20*dt;
@@ -925,13 +933,18 @@ if (cameraY > WORLD_BOTTOM) cameraY = WORLD_BOTTOM;
 }
 
 /* ================= RENDER ================= */
+// wipe frame completely (prevents ghost trails/banding)
+ctx.clearRect(0, 0, canvas.width, canvas.height);
 function render(){
-  // SKY gradient (underlay)
-  var top=0xBDE4FF, mid=0x8CC9FF, bot=0x6BB1F4;
-  for (var y=0;y<GROUND_Y;y++){
-    var t=y/GROUND_Y, hex=(t<0.5)?lerpRGB(top,mid,t/0.5):lerpRGB(mid,bot,(t-0.5)/0.5);
-    horizLine(0,y,canvas.width,hex);
-  }
+// SKY gradient (full canvas to avoid leftovers)
+var top = 0xBDE4FF, mid = 0x8CC9FF, bot = 0x6BB1F4;
+for (var y = 0; y < canvas.height; y++) {
+  var t = y / canvas.height;
+  var hex = (t < 0.5)
+    ? lerpRGB(top, mid, t / 0.5)
+    : lerpRGB(mid, bot, (t - 0.5) / 0.5);
+  horizLine(0, y, canvas.width, hex);
+}
 
   // Clouds layer (tile the cloud index)
   drawCloudLayer(map.cloud, parallax.cloudsFarX, 12 - cameraY, 0.15);
@@ -987,17 +1000,12 @@ function drawTreeline(){
   ctx.restore();
 }
 function drawPlatforms(){
-  // Simple beams with a little drop shadow
   for (var i=0;i<PLATFORMS.length;i++){
     var p = PLATFORMS[i];
-    var sx = p.x - cameraX;
-    var sy = p.y - cameraY;
-
-    // shadow
-   fillRect(sx, sy+1, p.w, p.h, 0x2b1b30);
-    // deck
-    fillRect(sx, sy,   p.w, p.h, 0x5f4db0); // placeholder color; swap to tiles later
-    // top highlight
+    var sx = Math.round(p.x - cameraX);
+    var sy = Math.round(p.y - cameraY);
+    fillRect(sx, sy+1, p.w, p.h, 0x2b1b30);
+    fillRect(sx, sy,   p.w, p.h, 0x5f4db0);
     fillRect(sx, sy-1, p.w, 1,   0xbcaeff);
   }
 }
@@ -1025,11 +1033,12 @@ function drawGround(){
 }
 
 function drawBuilding(h){
-  var screenX = h.x - cameraX;
-  var baseY = (typeof h.baseY === "number") ? h.baseY : GROUND_Y;
+  var screenX = Math.round(h.x - cameraX);
+  var baseY   = (typeof h.baseY === "number") ? h.baseY : GROUND_Y;
   var x = screenX - Math.floor(h.w/2);
-  var y = (baseY - h.h) - cameraY;
- 
+  var y = Math.round((baseY - h.h) - cameraY);
+  // ... leave the rest as-is ...
+}
 
   if (h.kind==='cabin'){
     drawBlock(map.cabin, 4,3, x,y);
