@@ -933,9 +933,10 @@ if (cameraY > WORLD_BOTTOM) cameraY = WORLD_BOTTOM;
 }
 
 /* ================= RENDER ================= */
-// wipe frame completely (prevents ghost trails/banding)
-ctx.clearRect(0, 0, canvas.width, canvas.height);
 function render(){
+  // wipe frame completely (prevents ghost trails/banding)
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  
 // SKY gradient (full canvas to avoid leftovers)
 var top = 0xBDE4FF, mid = 0x8CC9FF, bot = 0x6BB1F4;
 for (var y = 0; y < canvas.height; y++) {
@@ -1037,23 +1038,19 @@ function drawBuilding(h){
   var baseY   = (typeof h.baseY === "number") ? h.baseY : GROUND_Y;
   var x = screenX - Math.floor(h.w/2);
   var y = Math.round((baseY - h.h) - cameraY);
-  // ... leave the rest as-is ...
-}
 
   if (h.kind==='cabin'){
-    drawBlock(map.cabin, 4,3, x,y);
+    drawBlock(map.cabin, 4,3, x, y);
   } else if (h.kind==='cottage'){
-    drawBlock(map.cottage, 4,3, x,y);
+    drawBlock(map.cottage, 4,3, x, y);
   } else { // windmill
-    // body
-    drawBlock(map.windmill, 4,4, x,y);
-    // blades (centered)
-    var frame = Math.floor((Date.now()/160)% (Array.isArray(map.windmillBlades)?map.windmillBlades.length:1));
-    var bladeTopLeft = Array.isArray(map.windmillBlades)?map.windmillBlades[frame]:map.windmillBlades;
-    drawBlock(bladeTopLeft, 4,4, x, y - 4); // slight offset so it overlaps top
+    drawBlock(map.windmill, 4,4, x, y);
+    var frame = Math.floor((Date.now()/160) % (Array.isArray(map.windmillBlades) ? map.windmillBlades.length : 1));
+    var bladeTopLeft = Array.isArray(map.windmillBlades) ? map.windmillBlades[frame] : map.windmillBlades;
+    drawBlock(bladeTopLeft, 4,4, x, y - 4);
   }
 
-  // Title label above roof using tiny pixel text
+  // label
   pixelText(h.title.toUpperCase(), x, y-10, 0x143C0D, h.w);
 }
 
