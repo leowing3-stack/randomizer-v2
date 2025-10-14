@@ -239,16 +239,27 @@
 var CSV_URL = "https://docs.google.com/spreadsheets/d/<SHEET_ID>/pub?gid=<GID_TODAY>&single=true&output=csv";
 var TILE = 16, GROUND_Y = 120;
 var PHYS = {
-  walkSpeed: 60,
+  // horizontal tuning
+  walkSpeed: 100,          // was 60
+  runMultiplier: 1.35,     // hold Shift to sprint
+  accelGround: 900,        // px/s^2
+  accelAir: 450,           // weaker in air → preserves momentum
+  frictionGround: 700,     // px/s^2 when no input
+  frictionAir: 140,        // small air drag
+
+  // jump carry
+  jumpCarry: 40,           // tiny horizontal boost on takeoff
+
+  // existing
   deadzone: 36,
-  gravity: 900,   // keep gravity feel
-  jumpVel: 420,   // was 280; ~98px rise -> comfortably above tall platforms
-  termVel: 800,   // keep fall slick at higher peaks
+  gravity: 900,
+  jumpVel: 420,
+  termVel: 800,
   coyoteTime: 0.08,
   jumpBuffer: 0.12
 };
 /* PATCH START: define keys state */
-var keys = { left:false, right:false, up:false, jump:false };
+var keys = { left:false, right:false, up:false, jump:false, shift:false };
 /* PATCH END */
 /* === PLAYER SPRITE CONFIG (folders + filenames) === */
 var PLAYER_SPR = {
@@ -342,8 +353,9 @@ function doJump(){
   setAnim("jump");                 // reset anim clock on takeoff
   anim.playedJumpOnce = false;
 
-  // SMALL forward carry if moving
-  if (player.vx !== 0) player.vx = player.facing * (PHYS.walkSpeed + 10);
+// preserve momentum + tiny boost
+if (Math.abs(player.vx) > 0) {
+  player.vx += player.facing * PHYS.jumpCarry;
 }
 
 function landOn(surfaceY){
@@ -486,6 +498,7 @@ function wireUI(){
     if (e.key==='ArrowLeft' || e.key==='a' || e.key==='A') keys.left = true;
     if (e.key==='ArrowRight'|| e.key==='d' || e.key==='D') keys.right= true;
     if (e.key==='ArrowUp'   || e.key==='w' || e.key==='W' || e.key==='Enter') keys.up=true;
+    if (e.key === 'Shift') keys.shift = false;
 
 // === ADD: Jump controls ===
 if (e.code === 'Space') {
@@ -510,6 +523,7 @@ if (e.key === 'z' || e.key === 'Z') {
     if (e.key==='ArrowLeft' || e.key==='a' || e.key==='A') keys.left = false;
     if (e.key==='ArrowRight'|| e.key==='d' || e.key==='D') keys.right= false;
     if (e.key==='ArrowUp'   || e.key==='w' || e.key==='W' || e.key==='Enter') keys.up=false;
+    if (e.key === 'Shift') keys.shift = true;
   });
 /* PATCH END */
 
@@ -771,13 +785,30 @@ function loop(){
 
 function update(dt){
   // --- HORIZONTAL (unchanged feel) ---
-  var want = 0;
-  if (keys.left && !keys.right)  want = -PHYS.walkSpeed;
-  else if (keys.right && !keys.left) want =  PHYS.walkSpeed;
+  // --- HORIZONTAL (momentum) ---
+var input = 0;
+if (keys.left)  input -= 1;
+if (keys.right) input += 1;
 
-  player.vx = want;
-  if (player.vx !== 0) player.facing = (player.vx > 0 ? 1 : -1);
-  player.x += player.vx * dt;
+var maxSpeed = PHYS.walkSpeed * (keys.shift ? PHYS.runMultiplier : 1);
+var target   = maxSpeed * input;
+var accel    = player.grounded ? PHYS.accelGround : PHYS.accelAir;
+
+// accelerate towards target (clamped per-frame)
+var delta = target - player.vx;
+var maxDelta = accel * dt;
+if (Math.abs(delta) > maxDelta) delta = Math.sign(delta) * maxDelta;
+player.vx += delta;
+
+// friction if no input
+if (input === 0) {
+  var fr = (player.grounded ? PHYS.frictionGround : PHYS.frictionAir) * dt;
+  if (Math.abs(player.vx) <= fr) player.vx = 0;
+  else player.vx -= Math.sign(player.vx) * fr;
+}
+
+player.x += player.vx * dt;
+if (player.vx !== 0) player.facing = (player.vx > 0 ? 1 : -1);
 
   if (player.x < 0) player.x = 0;
   if (player.x > worldW - 8) player.x = worldW - 8;
