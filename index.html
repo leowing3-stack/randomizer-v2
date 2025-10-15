@@ -1147,23 +1147,28 @@ function drawPlatforms(){
     var sx = Math.round(p.x - cameraX);
     var sy = Math.round(p.y - cameraY);
 
+    // 0) solid body (so no sky/blue shows through)
+    // Use the dirt tile if loaded; otherwise a brown fallback.
+    if (dirtReady){
+      for (var xx = sx; xx < sx + p.w; xx += 16){
+        // make the slab ~12px tall; tweak to taste
+        ctx.drawImage(imgDirt, xx, sy, 16, 16);
+      }
+    } else {
+      // fallback color (earthy brown), NOT blue
+      fillRect(sx, sy, p.w, 12, 0x6b4a2f);
+    }
+
     // 1) seam/shadow along the top edge
     fillRect(sx, sy - 1, p.w, 1, GRASS_SEAM_SHADOW);
 
-    // 2) grass cap across the top
+    // 2) grass cap across the top (slight overlap sells the look)
     for (var x = sx; x < sx + p.w; x += 16){
       if (grassReady){
-        // aligns with ground grass; slight overlap sells the look
         ctx.drawImage(imgGrass, x, sy - 16 + GRASS_OVERLAP, 16, 16);
       } else {
+        // still draw a dark line if grass missing
         fillRect(x, sy - 1, 16, 1, GRASS_SEAM_SHADOW);
-      }
-    }
-
-    // 3) a shallow dirt lip under the cap so it feels “solid”
-    for (var x2 = sx; x2 < sx + p.w; x2 += 16){
-      if (dirtReady){
-        ctx.drawImage(imgDirt, x2, sy, 16, 16); // only the top 6–10px show
       }
     }
   }
