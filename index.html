@@ -1110,6 +1110,8 @@ function drawTreeline(){
     drawBlock(map.tree, 3, 4, x, (GROUND_Y - 32) - cameraY);
   }
   ctx.restore();
+} // ← CLOSE drawTreeline properly
+
 function drawPlatforms(){
   for (var i = 0; i < PLATFORMS.length; i++){
     var p  = PLATFORMS[i];
@@ -1129,7 +1131,6 @@ function drawPlatforms(){
     }
   }
 }
-
 function drawGround(){
   // GRASS CAP along ground line (lip overlaps the dirt)
   if (grassReady){
