@@ -327,6 +327,12 @@ var WORLD_H = 1200;   // rough world height; tweak later
 var VDEADZONE = 40;   // vertical deadzone like horizontal
 var WORLD_TOP = -800, WORLD_BOTTOM = 0; // vertical clamp; updated after building platforms
 
+// Vertical framing bias (fraction of canvas height above the player)
+var camBias = {
+  current: 0.50,   // start near center
+  target:  0.50,   // where we want to go
+  lerp:    6       // how fast we ease (units: 1/sec)
+};
 
 /* Player */
 var player = {
@@ -930,8 +936,29 @@ anim.t += dt;
   if (cameraX < rightDZ) cameraX = Math.min(rightDZ, cameraX + 120*dt);
   if (cameraX < 0) cameraX = 0;
   if (cameraX > worldW - canvas.width) cameraX = worldW - canvas.width;
-// --- VERTICAL CAMERA FOLLOW (snappier, limited lag) ---
-var targetY = player.y - canvas.height * 0.45;
+
+  // --- Decide vertical framing based on where the player is ---
+// Rule of thumb:
+// - On ground level → keep player nearer the center (0.55)
+// - Up on higher platforms → push camera up (0.70) so more headroom (player lower)
+// - While rising quickly, give a little extra look-ahead (0.45) so you see where you’re going
+var highThreshold = GROUND_Y - 40;   // consider "high" once player is ~40px above ground
+var risingFast    = player.vy < -120;
+
+if (risingFast){
+  camBias.target = 0.45;             // small look-ahead upwards while jumping up
+} else if (player.y < highThreshold){
+  camBias.target = 0.70;             // you’re up high → keep the view higher
+} else {
+  camBias.target = 0.55;             // ground-ish → near center
+}
+
+// Ease the bias so it doesn’t pop
+camBias.current += (camBias.target - camBias.current) * Math.min(1, camBias.lerp * dt);
+
+// Apply the bias to the camera target
+var targetY = player.y - canvas.height * camBias.current;
+
 
 // faster catch-up when rising, softer when falling
 var k = (player.vy < 0 ? 28 : 16) * dt;   // was 14*dt
