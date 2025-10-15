@@ -387,17 +387,8 @@ var houses=[], pines=[];
 /* One-way platform segments (world coordinates) */
 var PLATFORMS = [];
 
-/* Tileset Atlas + tweak */
-var atlas=null;
-var defaultMap = {
-  grass:[0,1,2,3],      // 4 variants (indices on 16x16 grid)
-  dirt:4,               // base dirt tile
-  rock:5,               // dirt with rock
-  cloud:6,              // cloud tile
-  tree:8,               // big tree (drawn as a 3x4 tile block)
-  cabin:9,              // cabin top-left (4x3 tiles area)
-  player:65             // player 16x16 (single frame used as base; we offset for walk)
-};
+// Minimal stub map (only for pixel fallback)
+var map = { player: 65 };
 var map = loadTileMap() || defaultMap;
 var tweak = { on:false, key:'grass', index:0 };
 /* === LOAD PER-FRAME PNGs === */
@@ -542,28 +533,7 @@ if (e.key === 'z' || e.key === 'Z') {
 }
 
 /* ================= ATLAS ================= */
-function loadAtlas(src){
-  return new Promise(function(resolve){
-    var img=new Image(); img.onload=function(){ atlas={img:img, w:img.width, h:img.height, cols:(img.width/TILE)|0, rows:(img.height/TILE)|0}; resolve(); };
-    img.src=src;
-  });
-}
-function drawTileIndex(idx, dx,dy, dw,dh){
-  var cols=atlas.cols;
-  var sx=(idx%cols)*TILE, sy=((idx/cols)|0)*TILE;
-  ctx.drawImage(atlas.img, sx,sy, TILE,TILE, dx,dy, dw||TILE, dh||TILE);
-}
 
-/* helper: draw multi-tile block starting at index (top-left) */
-function drawBlock(topLeftIdx, wTiles, hTiles, dx, dy){
-  var cols=atlas.cols;
-  for (var ty=0; ty<hTiles; ty++){
-    for (var tx=0; tx<wTiles; tx++){
-      var idx = topLeftIdx + tx + cols*ty;
-      drawTileIndex(idx, dx+tx*TILE, dy+ty*TILE);
-    }
-  }
-}
 
 /* Standalone cabin image */
 var imgCabin = new Image();
@@ -1138,9 +1108,9 @@ function drawGround(){
   // GRASS CAP on the ground line
   for (var x = 0; x < canvas.width; x += 16){
     if (grassReady){
-      ctx.drawImage(imgGrass, x, groundTop - 16 + GRASS_OVERLAP, 16, 16);
+      ctx.drawImage(imgGrass, x, groundTop - 12 + GRASS_OVERLAP, 16, 16);
     } else {
-      fillRect(x, groundTop - 1, 16, 1, GRASS_SEAM_SHADOW);
+      fillRect(x, groundTop - 2, 16, 2, GRASS_SEAM_SHADOW);
     }
   }
 
@@ -1352,25 +1322,7 @@ function hashId(s){ var h=0; for(var i=0;i<s.length;i++){ h=((h<<5)-h)+s.charCod
 function rand01(seed){ var x=Math.sin(seed)*10000; return x - Math.floor(x); }
 function randInt(seed,min,max){ return Math.floor(rand01(seed)*(max-min+1))+min; }
 
-/* ---------- TWEAK MODE ---------- */
-function loadTileMap(){ try{ return JSON.parse(localStorage.getItem('sb_tilemap')||''); }catch(e){ return null; } }
-function saveTileMap(){ localStorage.setItem('sb_tilemap', JSON.stringify(map)); }
-function pickKey(num){
-  var keys=['grass','dirt','rock','cloud','tree','cabin','player'];
-  var k = (num===0)?'player':keys[num-1];
-  tweak.key=k; tweak.index=0;
-}
-function cycleTile(delta){
-  var k=tweak.key;
-  if (Array.isArray(map[k])){
-    // edit the first element by cycling, or push a new one
-    var arr=map[k]; var v=(arr[tweak.index]||arr[0]||0) + delta; if (v<0) v=0;
-    arr[tweak.index]=v;
-  } else {
-    var v=(map[k]||0)+delta; if (v<0) v=0; map[k]=v;
-  }
-  saveTileMap();
-}
+
 </script>
 </body>
 </html>
