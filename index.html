@@ -259,8 +259,6 @@ var PHYS = {
   coyoteTime: 0.08,
   jumpBuffer: 0.12
 };
-var GRASS_OVERLAP = 4; // pixels the grass cap dips into the dirt
-var GRASS_SEAM_SHADOW = 0x3b2a4e;
 /* PATCH START: define keys state */
 var keys = { left:false, right:false, up:false, jump:false, shift:false };
 /* PATCH END */
@@ -580,13 +578,21 @@ var imgGrass = new Image(), grassReady = false;
 imgGrass.onload = function(){ grassReady = true; };
 imgGrass.src = './SocialBurstRandomizer/sprites/tiles/grass_cap.png';
 
-var imgDirt  = new Image(), dirtReady = false, dirtPattern = null;
-imgDirt.onload = function(){
-  dirtReady = true;
-  // repeat in both directions; it's a seamless tile
-  dirtPattern = ctx.createPattern(imgDirt, 'repeat');
-};
+var imgDirt  = new Image(), dirtReady = false;
+imgDirt.onload = function(){ dirtReady = true; };
 imgDirt.src = './SocialBurstRandomizer/sprites/tiles/dirt_fill.png';
+
+/* === PLATFORM / GROUND TILES (16x16) === */
+var imgGrass = new Image();
+var grassReady = false;
+imgGrass.onload = function(){ grassReady = true; };
+imgGrass.src = './SocialBurstRandomizer/sprites/tiles/grass_0.png';  // <-- your grass+dirt block
+
+var imgDirt = new Image();
+var dirtReady = false;
+imgDirt.onload = function(){ dirtReady = true; };
+imgDirt.src = './SocialBurstRandomizer/sprites/tiles/dirt.png';      // <-- flat dirt filler
+
 /* ======= ABBEY BG (parallax landmark) ======= */
 var imgAbbeyBG = new Image();
 var abbeyBGReady = false;
@@ -1110,57 +1116,67 @@ function drawTreeline(){
     drawBlock(map.tree, 3, 4, x, (GROUND_Y - 32) - cameraY);
   }
   ctx.restore();
-} // ← CLOSE drawTreeline properly
-
+}
 function drawPlatforms(){
-  for (var i = 0; i < PLATFORMS.length; i++){
-    var p  = PLATFORMS[i];
+  for (var i=0;i<PLATFORMS.length;i++){
+    var p = PLATFORMS[i];
     var sx = Math.round(p.x - cameraX);
     var sy = Math.round(p.y - cameraY);
 
-    // DIRT BODY under each platform (straight strip)
-for (var x = sx; x < sx + p.w; x += 16){
-  ctx.drawImage(imgDirt, x, sy - GRASS_OVERLAP, 16, 16 + GRASS_OVERLAP);
-}
+    // --- DIRT FILL: tile a 16px-high strip under the platform top
+    var fillH = 16; // one tile of thickness; increase if you want chunkier platforms
+    for (var x = sx; x < sx + p.w; x += 16){
+      if (dirtReady){
+        ctx.drawImage(imgDirt, x, sy, 16, 16);
+      } else {
+        // fallback to the old purple bars if image not ready
+        fillRect(x, sy+1, 16, 6, 0x2b1b30);
+        fillRect(x, sy,   16, 6, 0x5f4db0);
+        fillRect(x, sy-1, 16, 1, 0xbcaeff);
+      }
+    }
 
-    // 2) GRASS CAP — repeat the cap tile across the top
+    // --- GRASS CAP: sits on the very top edge (overhang lip)
     for (var x = sx; x < sx + p.w; x += 16){
       if (grassReady){
-        ctx.drawImage(imgGrass, x, sy - 16 + GRASS_OVERLAP - 1, 16, 16);
+        ctx.drawImage(imgGrass, x, sy - 16, 16, 16);
       } else {
-        fillRect(x, sy - 1, 16, 1, GRASS_SEAM_SHADOW);
+        // fallback: thin green bar
+        fillRect(x, sy-1, 16, 2, 0x6bdc5a);
       }
     }
   }
 }
+
 function drawGround(){
-  // GRASS CAP along ground line (lip overlaps the dirt)
-  if (grassReady){
-    for (var x = 0; x < canvas.width; x += 16){
-ctx.drawImage(imgGrass, x, (GROUND_Y - 16) - cameraY + GRASS_OVERLAP - 1, 16, 16);
-fillRect(x, (GROUND_Y - 1) - cameraY, 16, 1, GRASS_SEAM_SHADOW);
-    }
-  } else {
-    var variants = Array.isArray(map.grass) ? map.grass : [map.grass];
-    for (var x = 0; x < canvas.width; x += 16){
-      var idx = variants[(((x + cameraX) / 16) % variants.length) | 0];
-      drawTileIndex(idx, x, (GROUND_Y - 8) - cameraY);
-    }
-  }
-
-  // Platforms (above ground dirt)
-  drawPlatforms();
-
- // DIRT BODY using the PNG, tiled in a grid from the ground to bottom
-var dirtTop = GROUND_Y - cameraY;
-for (var y = dirtTop; y < canvas.height; y += 16){
+  // grass lip at ground line
+if (grassReady){
   for (var x = 0; x < canvas.width; x += 16){
-    ctx.drawImage(imgDirt, x, y, 16, 16);
+    ctx.drawImage(imgGrass, x, (GROUND_Y - 16) - cameraY, 16, 16);
+  }
+} else {
+  // your existing grass-from-atlas fallback stays here
+  var variants = Array.isArray(map.grass) ? map.grass : [map.grass];
+  for (var x = 0; x < canvas.width; x += 16){
+    var idx = variants[(((x + cameraX) / 16) % variants.length) | 0];
+    drawTileIndex(idx, x, (GROUND_Y - 8) - cameraY);
   }
 }
-} // ← CLOSE drawGround() properly
 
-function drawBuilding(h){
+  // Platforms (drawn above the ground)
+  drawPlatforms();
+
+  // purple soil body
+  for (var y = GROUND_Y - cameraY; y < canvas.height; y += TILE){
+    for (var x = 0; x < canvas.width; x += TILE){
+      drawTileIndex(map.dirt, x, y);
+      if (((y + cameraY) % 32 === 0) && (((x + cameraX) % 48) === 0)) {
+        drawTileIndex(map.rock, x, y); // sprinkle rocks
+      }
+    }
+  }
+}
+
 function drawBuilding(h){
   var screenX = Math.round(h.x - cameraX);
   var baseY   = (typeof h.baseY === "number") ? h.baseY : GROUND_Y;
@@ -1332,29 +1348,7 @@ function lerpRGB(a,b,t){
   var rr=(ar+(br-ar)*t)|0, gg=(ag+(bg-ag)*t)|0, bb2=(ab+(bb-ab)*t)|0;
   return (rr<<16)|(gg<<8)|bb2;
 }
-// ====== NEW: fillDirtRect helper ======
-function fillDirtRect(x, y, w, h){
-  // If the pattern isn't ready, fall back to tiling
-  if (!dirtPattern || !dirtReady){
-    for (var yy = Math.floor(y/16)*16; yy < y + h; yy += 16){
-      for (var xx = Math.floor(x/16)*16; xx < x + w; xx += 16){
-        ctx.drawImage(imgDirt, xx, yy, 16, 16);
-      }
-    }
-    return;
-  }
 
-  // Keep the dirt pattern “locked” to world space so no seams show while moving
-  ctx.save();
-  ctx.translate(- (cameraX % 16), - (cameraY % 16));
-  ctx.fillStyle = dirtPattern;
-
-  // Draw a clean rect of continuous dirt
-  var rx = Math.round(x + (cameraX % 16));
-  var ry = Math.round(y + (cameraY % 16));
-  ctx.fillRect(rx, ry, Math.round(w), Math.round(h));
-  ctx.restore();
-}
 /* ---------- Pixel text 3x5 ---------- */
 var FONT={A:["010","101","111","101","101"],B:["110","101","110","101","110"],C:["011","100","100","100","011"],D:["110","101","101","101","110"],E:["111","100","110","100","111"],F:["111","100","110","100","100"],G:["011","100","101","101","011"],H:["101","101","111","101","101"],I:["111","010","010","010","111"],J:["001","001","001","101","010"],K:["101","101","110","101","101"],L:["100","100","100","100","111"],M:["101","111","111","101","101"],N:["101","111","111","111","101"],O:["010","101","101","101","010"],P:["110","101","110","100","100"],Q:["010","101","101","111","011"],R:["110","101","110","101","101"],S:["011","100","010","001","110"],T:["111","010","010","010","010"],U:["101","101","101","101","111"],V:["101","101","101","101","010"],W:["101","101","111","111","101"],X:["101","101","010","101","101"],Y:["101","101","010","010","010"],Z:["111","001","010","100","111"]," ":[ "000","000","000","000","000" ]};
 function pixelText(s,x,y,color,maxWidth){
