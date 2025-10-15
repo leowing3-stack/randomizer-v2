@@ -1137,8 +1137,8 @@ function drawGround(){
   // GRASS CAP along ground line (lip overlaps the dirt)
   if (grassReady){
     for (var x = 0; x < canvas.width; x += 16){
-ctx.drawImage(imgGrass, x, (GROUND_Y - 16) - cameraY + GRASS_OVERLAP - 1, 16, 16);
-fillRect(x, (GROUND_Y - 1) - cameraY, 16, 1, GRASS_SEAM_SHADOW);
+      ctx.drawImage(imgGrass, x, (GROUND_Y - 16) - cameraY + GRASS_OVERLAP - 1, 16, 16);
+      fillRect(x, (GROUND_Y - 1) - cameraY, 16, 1, GRASS_SEAM_SHADOW);
     }
   } else {
     var variants = Array.isArray(map.grass) ? map.grass : [map.grass];
@@ -1151,13 +1151,14 @@ fillRect(x, (GROUND_Y - 1) - cameraY, 16, 1, GRASS_SEAM_SHADOW);
   // Platforms (above ground dirt)
   drawPlatforms();
 
- // DIRT BODY using the PNG, tiled in a grid from the ground to bottom
-var dirtTop = GROUND_Y - cameraY;
-for (var y = dirtTop; y < canvas.height; y += 16){
-  for (var x = 0; x < canvas.width; x += 16){
-    ctx.drawImage(imgDirt, x, y, 16, 16);
+  // DIRT BODY using the PNG, tiled in a grid from the ground to bottom
+  var dirtTop = GROUND_Y - cameraY;
+  for (var y = dirtTop; y < canvas.height; y += 16){
+    for (var x = 0; x < canvas.width; x += 16){
+      ctx.drawImage(imgDirt, x, y, 16, 16);
+    }
   }
-}
+} // ← drawGround() properly closed
 function drawBuilding(h){
   var screenX = Math.round(h.x - cameraX);
   var baseY   = (typeof h.baseY === "number") ? h.baseY : GROUND_Y;
