@@ -582,16 +582,6 @@ var imgDirt  = new Image(), dirtReady = false;
 imgDirt.onload = function(){ dirtReady = true; };
 imgDirt.src = './SocialBurstRandomizer/sprites/tiles/dirt_fill.png';
 
-/* === PLATFORM / GROUND TILES (16x16) === */
-var imgGrass = new Image();
-var grassReady = false;
-imgGrass.onload = function(){ grassReady = true; };
-imgGrass.src = './SocialBurstRandomizer/sprites/tiles/grass_0.png';  // <-- your grass+dirt block
-
-var imgDirt = new Image();
-var dirtReady = false;
-imgDirt.onload = function(){ dirtReady = true; };
-imgDirt.src = './SocialBurstRandomizer/sprites/tiles/dirt.png';      // <-- flat dirt filler
 
 /* ======= ABBEY BG (parallax landmark) ======= */
 var imgAbbeyBG = new Image();
@@ -1123,18 +1113,20 @@ function drawPlatforms(){
     var sx = Math.round(p.x - cameraX);
     var sy = Math.round(p.y - cameraY);
 
-    // --- DIRT FILL: tile a 16px-high strip under the platform top
-    var fillH = 16; // one tile of thickness; increase if you want chunkier platforms
+    // 1) DIRT FILL (under the top edge)
+    var fillH = 16; // thickness of the platform body
     for (var x = sx; x < sx + p.w; x += 16){
-      if (dirtReady){
-        ctx.drawImage(imgDirt, x, sy, 16, 16);
-      } else {
-        // fallback to the old purple bars if image not ready
-        fillRect(x, sy+1, 16, 6, 0x2b1b30);
-        fillRect(x, sy,   16, 6, 0x5f4db0);
-        fillRect(x, sy-1, 16, 1, 0xbcaeff);
-      }
+      if (dirtReady) ctx.drawImage(imgDirt, x, sy, 16, 16);
+      else { fillRect(x, sy, 16, 6, 0x5f4db0); }
     }
+
+    // 2) GRASS CAP (lip sits ON the top, overhanging down)
+    for (var x = sx; x < sx + p.w; x += 16){
+      if (grassReady) ctx.drawImage(imgGrass, x, sy - 16, 16, 16);
+      else { fillRect(x, sy-1, 16, 2, 0x6bdc5a); }
+    }
+  }
+}
 
     // --- GRASS CAP: sits on the very top edge (overhang lip)
     for (var x = sx; x < sx + p.w; x += 16){
@@ -1149,29 +1141,29 @@ function drawPlatforms(){
 }
 
 function drawGround(){
-  // grass lip at ground line
-if (grassReady){
-  for (var x = 0; x < canvas.width; x += 16){
-    ctx.drawImage(imgGrass, x, (GROUND_Y - 16) - cameraY, 16, 16);
+  // GRASS CAP along ground line (lip overlaps the dirt)
+  if (grassReady){
+    for (var x = 0; x < canvas.width; x += 16){
+      ctx.drawImage(imgGrass, x, (GROUND_Y - 16) - cameraY, 16, 16);
+    }
+  } else {
+    // fallback to atlas grass if PNG not ready
+    var variants = Array.isArray(map.grass) ? map.grass : [map.grass];
+    for (var x = 0; x < canvas.width; x += 16){
+      var idx = variants[(((x + cameraX) / 16) % variants.length) | 0];
+      drawTileIndex(idx, x, (GROUND_Y - 8) - cameraY);
+    }
   }
-} else {
-  // your existing grass-from-atlas fallback stays here
-  var variants = Array.isArray(map.grass) ? map.grass : [map.grass];
-  for (var x = 0; x < canvas.width; x += 16){
-    var idx = variants[(((x + cameraX) / 16) % variants.length) | 0];
-    drawTileIndex(idx, x, (GROUND_Y - 8) - cameraY);
-  }
-}
 
-  // Platforms (drawn above the ground)
+  // Platforms (above ground dirt)
   drawPlatforms();
 
-  // purple soil body
+  // Existing purple soil body (tiles) — keep this
   for (var y = GROUND_Y - cameraY; y < canvas.height; y += TILE){
     for (var x = 0; x < canvas.width; x += TILE){
       drawTileIndex(map.dirt, x, y);
       if (((y + cameraY) % 32 === 0) && (((x + cameraX) % 48) === 0)) {
-        drawTileIndex(map.rock, x, y); // sprinkle rocks
+        drawTileIndex(map.rock, x, y);
       }
     }
   }
