@@ -1118,8 +1118,10 @@ function drawPlatforms(){
     var sx = Math.round(p.x - cameraX);
     var sy = Math.round(p.y - cameraY);
 
-    // 1) DIRT BODY — one solid strip (includes the overlap under the cap)
-    fillDirtRect(sx, sy - GRASS_OVERLAP, p.w, 16 + GRASS_OVERLAP);
+    // DIRT BODY under each platform (straight strip)
+for (var x = sx; x < sx + p.w; x += 16){
+  ctx.drawImage(imgDirt, x, sy - GRASS_OVERLAP, 16, 16 + GRASS_OVERLAP);
+}
 
     // 2) GRASS CAP — repeat the cap tile across the top
     for (var x = sx; x < sx + p.w; x += 16){
@@ -1130,7 +1132,7 @@ function drawPlatforms(){
       }
     }
   }
-}
+}%
 function drawGround(){
   // GRASS CAP along ground line (lip overlaps the dirt)
   if (grassReady){
@@ -1149,9 +1151,12 @@ fillRect(x, (GROUND_Y - 1) - cameraY, 16, 1, GRASS_SEAM_SHADOW);
   // Platforms (above ground dirt)
   drawPlatforms();
 
-  //// Continuous dirt body using the PNG pattern
+ // DIRT BODY using the PNG, tiled in a grid from the ground to bottom
 var dirtTop = GROUND_Y - cameraY;
-fillDirtRect(0, dirtTop, canvas.width, canvas.height - dirtTop);
+for (var y = dirtTop; y < canvas.height; y += 16){
+  for (var x = 0; x < canvas.width; x += 16){
+    ctx.drawImage(imgDirt, x, y, 16, 16);
+  }
 }
 
 function drawBuilding(h){
