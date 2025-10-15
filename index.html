@@ -1142,18 +1142,20 @@ function drawTreeline(){
 } // ← CLOSE drawTreeline properly
 
 function drawPlatforms(){
-  // simple brown slabs only (no grass)
+  // simple brown slabs only (no grass caps or blue placeholders)
   for (var i = 0; i < PLATFORMS.length; i++){
     var p  = PLATFORMS[i];
     var sx = Math.round(p.x - cameraX);
     var sy = Math.round(p.y - cameraY);
 
-    // dirt strip (tile the 16×16 dirt PNG across the slab)
+    // dirt strip (tile the dirt image across)
     for (var x = sx; x < sx + p.w; x += 16){
-      ctx.drawImage(imgDirt, x, sy - 6, 16, 12);
+      if (dirtReady){
+        ctx.drawImage(imgDirt, x, sy - 6, 16, 12);
+      }
     }
 
-    // tiny shadow edge
+    // tiny dark edge line for depth
     fillRect(sx, sy - 1, p.w, 1, 0x3b2a4e);
   }
 }
@@ -1172,13 +1174,15 @@ function drawGround(){
   // simple ground line + dirt fill below it
   var groundTop = Math.round(GROUND_Y - cameraY);
 
-  // subtle seam/shadow
+  // thin shadow seam
   fillRect(0, groundTop - 1, canvas.width, 1, 0x3b2a4e);
 
-  // fill dirt from ground to bottom using the 16×16 dirt tile
+  // fill dirt pattern from ground to bottom
   for (var y = groundTop; y < canvas.height; y += 16){
     for (var x = 0; x < canvas.width; x += 16){
-      ctx.drawImage(imgDirt, x, y, 16, 16);
+      if (dirtReady){
+        ctx.drawImage(imgDirt, x, y, 16, 16);
+      }
     }
   }
 }
