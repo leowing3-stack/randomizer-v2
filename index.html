@@ -869,13 +869,7 @@ function placeHousesOnPlatforms(){
     }
   }
 }
-function findPlatformUnderX(x, row){
-  for (var i=0;i<PLATFORMS.length;i++){
-    var p = PLATFORMS[i];
-    if (p.row===row && x >= p.x && x <= p.x + p.w) return p;
-  }
-  return null;
-}
+
 
 
 /* ================= GAME LOOP ================= */
@@ -1036,8 +1030,7 @@ if (cameraY < WORLD_TOP)    cameraY = WORLD_TOP;
 if (cameraY > WORLD_BOTTOM) cameraY = WORLD_BOTTOM;
 
   // --- PARALLAX ---
-  parallax.cloudsNearX += 20*dt;
-  parallax.cloudsFarX  -= 10*dt;
+
   parallax.treeX = cameraX * 0.5;
 
   // --- ENTER detection unchanged ---
@@ -1091,13 +1084,7 @@ function render(){
   // Player
   drawPlayer(Math.round(player.x - cameraX), Math.round(player.y - cameraY));
 }
-/* ---------- DRAW HELPERS ---------- */
-function drawCloudLayer(tileIdx, scroll, y, speed){
-  var start = (-((scroll*speed)|0)) % TILE; if (start>0) start -= TILE;
-  for (var x=start; x<canvas.width; x+=TILE){
-    drawTileIndex(tileIdx, x, y);
-  }
-}
+
 
 // Draw the St Albans Abbey landmark (single sprite, parallaxed)
 function drawAbbeyBG(){
@@ -1128,18 +1115,6 @@ function doorXFor(h){
   if (h.kind === 'restaurant') return h.x + half - TILE * 1.5; // right-ish
   return h.x;
 }
-/* PATCH END */
-function drawTreeline(){
-  // use the tree tile as repeated silhouettes (darken via globalAlpha)
-  ctx.save();
-  ctx.globalAlpha = 0.65;
-  var offset = - (parallax.treeX|0) % (TILE*3);
-  for (var x=offset - TILE*3; x<canvas.width; x+=TILE*3){
-    // draw tree as a 3x4 block (assuming big tree at map.tree)
-    drawBlock(map.tree, 3, 4, x, (GROUND_Y - 32) - cameraY);
-  }
-  ctx.restore();
-} // ← CLOSE drawTreeline properly
 
 function drawPlatforms(){
   for (var i = 0; i < PLATFORMS.length; i++){
@@ -1147,46 +1122,57 @@ function drawPlatforms(){
     var sx = Math.round(p.x - cameraX);
     var sy = Math.round(p.y - cameraY);
 
-    // 0) solid body (so no sky/blue shows through)
-    // Use the dirt tile if loaded; otherwise a brown fallback.
+    // A) PLATFORM BODY (so the sky never shows through)
     if (dirtReady){
       for (var xx = sx; xx < sx + p.w; xx += 16){
-        // make the slab ~12px tall; tweak to taste
+        // 12px slab is enough, draw using the dirt tile
         ctx.drawImage(imgDirt, xx, sy, 16, 16);
       }
     } else {
-      // fallback color (earthy brown), NOT blue
+      // fallback earth tone (NOT blue)
       fillRect(sx, sy, p.w, 12, 0x6b4a2f);
     }
 
-    // 1) seam/shadow along the top edge
+    // B) seam/shadow along top
     fillRect(sx, sy - 1, p.w, 1, GRASS_SEAM_SHADOW);
 
-    // 2) grass cap across the top (slight overlap sells the look)
+    // C) grass cap across the top
     for (var x = sx; x < sx + p.w; x += 16){
       if (grassReady){
         ctx.drawImage(imgGrass, x, sy - 16 + GRASS_OVERLAP, 16, 16);
       } else {
-        // still draw a dark line if grass missing
+        // keep a dark line if grass missing
         fillRect(x, sy - 1, 16, 1, GRASS_SEAM_SHADOW);
       }
     }
   }
 }
 function drawGround(){
-  // simple ground line + dirt fill below it
   var groundTop = Math.round(GROUND_Y - cameraY);
 
-  // thin shadow seam
+  // seam just above the grass
   fillRect(0, groundTop - 1, canvas.width, 1, 0x3b2a4e);
 
-  // fill dirt pattern from ground to bottom
-  for (var y = groundTop; y < canvas.height; y += 16){
-    for (var x = 0; x < canvas.width; x += 16){
-      if (dirtReady){
-        ctx.drawImage(imgDirt, x, y, 16, 16);
+  // GRASS CAP on the ground
+  for (var x = 0; x < canvas.width; x += 16){
+    if (grassReady){
+      ctx.drawImage(imgGrass, x, groundTop - 16 + GRASS_OVERLAP, 16, 16);
+    } else {
+      // keep a dark line if grass missing
+      fillRect(x, groundTop - 1, 16, 1, GRASS_SEAM_SHADOW);
+    }
+  }
+
+  // DIRT BODY below the ground line
+  if (dirtReady){
+    for (var y = groundTop; y < canvas.height; y += 16){
+      for (var x2 = 0; x2 < canvas.width; x2 += 16){
+        ctx.drawImage(imgDirt, x2, y, 16, 16);
       }
     }
+  } else {
+    // brown fallback (prevents any sky showing at the bottom)
+    fillRect(0, groundTop, canvas.width, canvas.height - groundTop, 0x6b4a2f);
   }
 }
 
@@ -1368,17 +1354,6 @@ function lerpRGB(a,b,t){
   var rr=(ar+(br-ar)*t)|0, gg=(ag+(bg-ag)*t)|0, bb2=(ab+(bb-ab)*t)|0;
   return (rr<<16)|(gg<<8)|bb2;
 }
-// ====== NEW: fillDirtRect helper ======
-function fillDirtRect(x, y, w, h){
-  // If the pattern isn't ready, fall back to tiling
-  if (!dirtPattern || !dirtReady){
-    for (var yy = Math.floor(y/16)*16; yy < y + h; yy += 16){
-      for (var xx = Math.floor(x/16)*16; xx < x + w; xx += 16){
-        ctx.drawImage(imgDirt, xx, yy, 16, 16);
-      }
-    }
-    return;
-  }
 
   // Keep the dirt pattern “locked” to world space so no seams show while moving
   ctx.save();
@@ -1390,7 +1365,6 @@ function fillDirtRect(x, y, w, h){
   var ry = Math.round(y + (cameraY % 16));
   ctx.fillRect(rx, ry, Math.round(w), Math.round(h));
   ctx.restore();
-}
 /* ---------- Pixel text 3x5 ---------- */
 var FONT={A:["010","101","111","101","101"],B:["110","101","110","101","110"],C:["011","100","100","100","011"],D:["110","101","101","101","110"],E:["111","100","110","100","111"],F:["111","100","110","100","100"],G:["011","100","101","101","011"],H:["101","101","111","101","101"],I:["111","010","010","010","111"],J:["001","001","001","101","010"],K:["101","101","110","101","101"],L:["100","100","100","100","111"],M:["101","111","111","101","101"],N:["101","111","111","111","101"],O:["010","101","101","101","010"],P:["110","101","110","100","100"],Q:["010","101","101","111","011"],R:["110","101","110","101","101"],S:["011","100","010","001","110"],T:["111","010","010","010","010"],U:["101","101","101","101","111"],V:["101","101","101","101","010"],W:["101","101","111","111","101"],X:["101","101","010","101","101"],Y:["101","101","010","010","010"],Z:["111","001","010","100","111"]," ":[ "000","000","000","000","000" ]};
 function pixelText(s,x,y,color,maxWidth){
@@ -1406,7 +1380,6 @@ function pixelText(s,x,y,color,maxWidth){
 function hashId(s){ var h=0; for(var i=0;i<s.length;i++){ h=((h<<5)-h)+s.charCodeAt(i); h|=0; } return 'sb_'+Math.abs(h); }
 function rand01(seed){ var x=Math.sin(seed)*10000; return x - Math.floor(x); }
 function randInt(seed,min,max){ return Math.floor(rand01(seed)*(max-min+1))+min; }
-function nudge(dir){ player.vx=dir*1.8; player.facing=(dir<0?-1:1); setTimeout(function(){ if((dir<0 && player.vx<0)||(dir>0 && player.vx>0)) player.vx=0; },120); }
 
 /* ---------- TWEAK MODE ---------- */
 function loadTileMap(){ try{ return JSON.parse(localStorage.getItem('sb_tilemap')||''); }catch(e){ return null; } }
