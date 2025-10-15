@@ -237,15 +237,6 @@
 <script>
 /* ================= BASIC CONFIG ================= */
 
-// Background landmark config
-var ABBEY_BG = {
-  src: './SocialBurstRandomizer/sprites/bg/abbey_bg.png', // your file path
-  scale: 0.8,     // uniform scale (no squish)
-  parallax: 0.30, // scrolls slower than foreground
-  offsetX: 0,     // nudge horizontally if needed
-  offsetY: 0      // nudge vertically (positive lowers, negative raises)
-};
-
 var CSV_URL = "https://docs.google.com/spreadsheets/d/<SHEET_ID>/pub?gid=<GID_TODAY>&single=true&output=csv";
 var TILE = 16, GROUND_Y = 136;
 var PHYS = {
@@ -589,10 +580,10 @@ imgAbbeyBG.onload = function(){ abbeyBGReady = true; };
 imgAbbeyBG.src = './SocialBurstRandomizer/sprites/backgrounds/abbey_bg.png';
 
 var ABBEY_BG = {
-  scale: 0.92,   // uniform scale (no squish)
-  parallax: 0.30,
-  offsetX: 40,
-  offsetY: -6
+  scale: 0.90,   // how big the PNG appears
+  parallax: 0.20, // how much it moves vs foreground (smaller = more “distant”)
+  offsetX: -160,  // move LEFT so the whole Abbey is visible at start
+  offsetY: -6     // tiny lift so its base sits nicely on ground
 };
 
 /* ================= CSV & DATA ================= */
@@ -1071,15 +1062,15 @@ function drawAbbeyBG(){
   var w = Math.round(imgAbbeyBG.width  * s);
   var h = Math.round(imgAbbeyBG.height * s);
 
-  // parallax scroll (slower than foreground)
-  var par = (ABBEY_BG.parallax == null ? 0.30 : ABBEY_BG.parallax);
-  var px  = -((cameraX * par) | 0);
+  // parallax amount (0 = fixed, 1 = same as foreground)
+  var par = (ABBEY_BG.parallax == null ? 0.20 : ABBEY_BG.parallax);
 
-  // world anchor (a little into the scene so it’s not glued to the left edge)
-  var baseWorldX = 120 + (ABBEY_BG.offsetX || 0);
-  var x = Math.round(baseWorldX + px);
+  // anchor the image’s LEFT edge in world space, then parallax it
+  // NOTE: no hard-coded +120 here; we’ll position purely with offsetX
+  var worldLeft = (ABBEY_BG.offsetX || 0);
+  var x = Math.round(worldLeft - (cameraX * par));
 
-  // keep the abbey’s feet on the ground line, then lift by offsetY
+  // keep its feet on the ground, then apply vertical nudge
   var baseY = GROUND_Y + (ABBEY_BG.offsetY || 0);
   var y = Math.round((baseY - h) - cameraY);
 
