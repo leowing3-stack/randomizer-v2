@@ -182,7 +182,7 @@
         <div class="screen-inner">
           <canvas id="screen" width="256" height="192" aria-label="Game screen"></canvas>
           <div id="hint" class="hint">↑ ENTER</div>
-          <div id="tweakBadge" class="tweak-badge">TWEAK: 1=Grass 2=Dirt 3=Rock 4=Cloud 5=Fence 6=Tree 7=Cabin 8=Cottage 9=Windmill 0=Player • [ / ] cycle</div>
+          <div id="tweakBadge" class="tweak-badge">TWEAK: 1=Grass 2=Dirt 3=Rock 4=Cloud 5=Fence 6=Tree 7=Cabin  0=Player • [ / ] cycle</div>
         </div>
         <div class="screen-label">SOCIALBURST DOT MATRIX</div>
       </div>
@@ -397,9 +397,6 @@ var defaultMap = {
   fence:7,              // fence tile (16x16; engine repeats)
   tree:8,               // big tree (drawn as a 3x4 tile block)
   cabin:9,              // cabin top-left (4x3 tiles area)
-  cottage:21,           // cottage top-left (4x3)
-  windmill:33,          // windmill body top-left (4x4)
-  windmillBlades:[49,50,51,52], // 4 frames (each 4x4 or 4x4 area)
   player:65             // player 16x16 (single frame used as base; we offset for walk)
 };
 var map = loadTileMap() || defaultMap;
@@ -575,6 +572,17 @@ var cabinReady = false;
 imgCabin.onload = function(){ cabinReady = true; };
 imgCabin.src = './SocialBurstRandomizer/sprites/buildings/cabin.png';
 
+/* === Tavern Building === */
+var imgTavern = new Image();
+var tavernReady = false;
+imgTavern.onload = function(){ tavernReady = true; };
+imgTavern.src = './SocialBurstRandomizer/sprites/buildings/tavern.png';
+
+/* === Restaurant Building === */
+var imgRestaurant = new Image();
+var restaurantReady = false;
+imgRestaurant.onload = function(){ restaurantReady = true; };
+imgRestaurant.src = './SocialBurstRandomizer/sprites/buildings/restaurant.png';
 /* === GRASS + DIRT TILES (16x16, side-view) === */
 var imgGrass = new Image(), grassReady = false;
 imgGrass.onload = function(){ grassReady = true; };
@@ -587,6 +595,7 @@ imgDirt.onload = function(){
   dirtPattern = ctx.createPattern(imgDirt, 'repeat');
 };
 imgDirt.src = './SocialBurstRandomizer/sprites/tiles/dirt_fill.png';
+
 /* ======= ABBEY BG (parallax landmark) ======= */
 var imgAbbeyBG = new Image();
 var abbeyBGReady = false;
@@ -707,7 +716,7 @@ function getHouseHeight(h){
   if (h.kind === 'cabin' && typeof window.imgCabin !== 'undefined' && window.imgCabin){
     return window.imgCabin.height || h.h;
   }
-  // Defaults from the tileset (cabin/cottage 3 tiles high = 48px, windmill 4 tiles = 64px)
+  // Defaults from the tileset (cabin 3 tiles high = 48px)
   return h.h;
 }
 
@@ -740,18 +749,34 @@ function buildScene(){
   recomputeWorldBounds();
 }
 function buildHouses(){
-  houses=[];
-  var x=48, gap=128, list=(CATEGORY==='events'?EVENTS:DEALS);
-  for (var i=0;i<list.length;i++){
-    var it=list[i], seed=hashId(it.id).length + i*31;
-    var kind=['cabin','cottage','windmill'][randInt(seed,0,2)];
-    var wTiles= (kind==='windmill')?4:4;
-    var hTiles= (kind==='windmill')?4:3;
-    var w=wTiles*TILE, h=hTiles*TILE;
-    houses.push({ id:it.id, title:it.title, when:it.when, x:x, w:w, h:h, kind:kind, seed:seed });
-    x += gap + randInt(seed+3, -10, 24);
+  houses = [];
+  var x = 48, gap = 128;
+  var list = (CATEGORY === 'events' ? EVENTS : DEALS);
+  var KINDS = ['cabin','tavern','restaurant']; // only these 3 types
+
+  for (var i = 0; i < list.length; i++) {
+    var it = list[i];
+    var seed = hashId(it.id).length + i * 31;
+
+    var kind = KINDS[randInt(seed, 0, KINDS.length - 1)];
+    var wTiles = 4, hTiles = 3;
+    var w = wTiles * TILE, h = hTiles * TILE;
+
+    houses.push({
+      id: it.id,
+      title: it.title,
+      when: it.when,
+      x: x,
+      w: w,
+      h: h,
+      kind: kind,
+      seed: seed
+    });
+
+    x += gap + randInt(seed + 3, -10, 24);
   }
-  worldW=Math.max(256, (houses.length? houses[houses.length-1].x+160:256));
+
+  worldW = Math.max(256, (houses.length ? houses[houses.length - 1].x + 160 : 256));
 }
 function buildFences(){
   fences=[];
@@ -1090,13 +1115,11 @@ function drawAbbeyBG(){
   ctx.drawImage(imgAbbeyBG, x, y, w, h);
 }
 
-/* PATCH START: doorX helper */
 function doorXFor(h){
-  // crude door placement per kind; tweak if art changes
-  var half = h.w/2;
-  if (h.kind==='cabin')   return h.x - half + TILE*1.5;
-  if (h.kind==='cottage') return h.x + half - TILE*1.5;
-  // windmill center-ish
+  var half = h.w / 2;
+  if (h.kind === 'cabin')      return h.x - half + TILE * 1.5; // left-ish door
+  if (h.kind === 'tavern')     return h.x;                     // centered
+  if (h.kind === 'restaurant') return h.x + half - TILE * 1.5; // right-ish
   return h.x;
 }
 /* PATCH END */
@@ -1162,33 +1185,40 @@ function drawGround(){
 function drawBuilding(h){
   var screenX = Math.round(h.x - cameraX);
   var baseY   = (typeof h.baseY === "number") ? h.baseY : GROUND_Y;
-  var x = screenX - Math.floor(h.w/2);
+  var x = screenX - Math.floor(h.w / 2);
   var y = Math.round((baseY - h.h) - cameraY);
 
+  var s = 0.85; // same scale for all buildings
+
   if (h.kind === 'cabin'){
-  if (cabinReady){
-    var w = imgCabin.width;
-    var hgt = imgCabin.height;
-
-    var s = 0.85;                 // cabin scale (match the player scale for cohesion)
-    var dw = Math.round(w * s);
-    var dh = Math.round(hgt * s);
-
-    // Center horizontally in the same 4-tile (64px) footprint,
-    // and keep the base sitting on the platform/ground.
-    ctx.drawImage(
-      imgCabin,
-      x + Math.floor((64 - dw) / 2),   // re-center after scaling
-      y - (dh - 48),                   // shift up by the extra height so the base stays planted
-      dw, dh
-    );
-  } else {
-    drawBlock(map.cabin, 4, 3, x, y); // fallback to tiles
+    if (cabinReady){
+      var w = Math.round(imgCabin.width * s);
+      var dh = Math.round(imgCabin.height * s);
+      ctx.drawImage(imgCabin, x + Math.floor((64 - w) / 2), y - (dh - 48), w, dh);
+    } else {
+      drawBlock(map.cabin, 4, 3, x, y);
+    }
   }
-}
+  else if (h.kind === 'tavern'){
+    if (tavernReady){
+      var w2 = Math.round(imgTavern.width * s);
+      var dh2 = Math.round(imgTavern.height * s);
+      ctx.drawImage(imgTavern, x + Math.floor((64 - w2) / 2), y - (dh2 - 48), w2, dh2);
+    } else {
+      drawBlock(map.cabin, 4, 3, x, y);
+    }
+  }
+  else if (h.kind === 'restaurant'){
+    if (restaurantReady){
+      var w3 = Math.round(imgRestaurant.width * s);
+      var dh3 = Math.round(imgRestaurant.height * s);
+      ctx.drawImage(imgRestaurant, x + Math.floor((64 - w3) / 2), y - (dh3 - 48), w3, dh3);
+    } else {
+      drawBlock(map.cabin, 4, 3, x, y);
+    }
+  }
 
-  // label
-  pixelText(h.title.toUpperCase(), x, y-10, 0x143C0D, h.w);
+  pixelText(h.title.toUpperCase(), x, y - 10, 0x143C0D, h.w);
 }
 
 function drawPlayer(x, y){
@@ -1374,7 +1404,7 @@ function nudge(dir){ player.vx=dir*1.8; player.facing=(dir<0?-1:1); setTimeout(f
 function loadTileMap(){ try{ return JSON.parse(localStorage.getItem('sb_tilemap')||''); }catch(e){ return null; } }
 function saveTileMap(){ localStorage.setItem('sb_tilemap', JSON.stringify(map)); }
 function pickKey(num){
-  var keys=['grass','dirt','rock','cloud','fence','tree','cabin','cottage','windmill','player'];
+  var keys=['grass','dirt','rock','cloud','fence','tree','cabin','player'];
   var k = (num===0)?'player':keys[num-1];
   tweak.key=k; tweak.index=0;
 }
