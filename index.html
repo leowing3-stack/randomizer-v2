@@ -573,6 +573,15 @@ var cabinReady = false;
 imgCabin.onload = function(){ cabinReady = true; };
 imgCabin.src = './SocialBurstRandomizer/sprites/buildings/cabin.png';
 
+/* === GRASS + DIRT TILES (16x16, side-view) === */
+var imgGrass = new Image(), grassReady = false;
+imgGrass.onload = function(){ grassReady = true; };
+imgGrass.src = './SocialBurstRandomizer/sprites/tiles/grass_cap.png';
+
+var imgDirt  = new Image(), dirtReady = false;
+imgDirt.onload = function(){ dirtReady = true; };
+imgDirt.src = './SocialBurstRandomizer/sprites/tiles/dirt_fill.png';
+
 /* === PLATFORM / GROUND TILES (16x16) === */
 var imgGrass = new Image();
 var grassReady = false;
@@ -1110,46 +1119,46 @@ function drawTreeline(){
 }
 function drawPlatforms(){
   for (var i=0;i<PLATFORMS.length;i++){
-    var p  = PLATFORMS[i];
+    var p = PLATFORMS[i];
     var sx = Math.round(p.x - cameraX);
     var sy = Math.round(p.y - cameraY);
 
-    // 1) Top grass lip (repeat 16px tiles across width)
-    if (grassReady){
-      for (var x = 0; x < p.w; x += 16){
-        ctx.drawImage(imgGrass, sx + x, sy - 16, 16, 16);
+    // --- DIRT FILL: tile a 16px-high strip under the platform top
+    var fillH = 16; // one tile of thickness; increase if you want chunkier platforms
+    for (var x = sx; x < sx + p.w; x += 16){
+      if (dirtReady){
+        ctx.drawImage(imgDirt, x, sy, 16, 16);
+      } else {
+        // fallback to the old purple bars if image not ready
+        fillRect(x, sy+1, 16, 6, 0x2b1b30);
+        fillRect(x, sy,   16, 6, 0x5f4db0);
+        fillRect(x, sy-1, 16, 1, 0xbcaeff);
       }
-    } else {
-      // fallback: the old colored strip
-      fillRect(sx, sy, p.w, 2, 0xbcaeff);
     }
 
-    // 2) Dirt skirt under the platform (two rows looks nice)
-    if (dirtReady){
-      var rows = 2; // increase if you want thicker platforms
-      for (var r = 0; r < rows; r++){
-        for (var x = 0; x < p.w; x += 16){
-          ctx.drawImage(imgDirt, sx + x, sy - 16 + 16*(r+1), 16, 16);
-        }
+    // --- GRASS CAP: sits on the very top edge (overhang lip)
+    for (var x = sx; x < sx + p.w; x += 16){
+      if (grassReady){
+        ctx.drawImage(imgGrass, x, sy - 16, 16, 16);
+      } else {
+        // fallback: thin green bar
+        fillRect(x, sy-1, 16, 2, 0x6bdc5a);
       }
-    } else {
-      // fallback: purple block
-      fillRect(sx, sy+1, p.w, p.h, 0x5f4db0);
     }
   }
 }
 
 function drawGround(){
-  // grass lip — use up to 4 variant tiles
- if (grassReady){
+  // grass lip at ground line
+if (grassReady){
   for (var x = 0; x < canvas.width; x += 16){
     ctx.drawImage(imgGrass, x, (GROUND_Y - 16) - cameraY, 16, 16);
   }
 } else {
-  // fallback to atlas index if image not ready
+  // your existing grass-from-atlas fallback stays here
   var variants = Array.isArray(map.grass) ? map.grass : [map.grass];
-  for (var x = 0; x < canvas.width; x += TILE){
-    var idx = variants[(((x + cameraX) / TILE) % variants.length) | 0];
+  for (var x = 0; x < canvas.width; x += 16){
+    var idx = variants[(((x + cameraX) / 16) % variants.length) | 0];
     drawTileIndex(idx, x, (GROUND_Y - 8) - cameraY);
   }
 }
