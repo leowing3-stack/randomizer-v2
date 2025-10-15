@@ -1158,6 +1158,9 @@ for (var y = dirtTop; y < canvas.height; y += 16){
     ctx.drawImage(imgDirt, x, y, 16, 16);
   }
 }
+} // ← CLOSE drawGround() properly
+
+function drawBuilding(h){
 function drawBuilding(h){
   var screenX = Math.round(h.x - cameraX);
   var baseY   = (typeof h.baseY === "number") ? h.baseY : GROUND_Y;
