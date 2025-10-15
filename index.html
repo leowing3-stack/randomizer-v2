@@ -580,10 +580,10 @@ imgAbbeyBG.onload = function(){ abbeyBGReady = true; };
 imgAbbeyBG.src = './SocialBurstRandomizer/sprites/backgrounds/abbey_bg.png';
 
 var ABBEY_BG = {
-  scale: 0.90,   // how big the PNG appears
-  parallax: 0.20, // how much it moves vs foreground (smaller = more “distant”)
-  offsetX: -160,  // move LEFT so the whole Abbey is visible at start
-  offsetY: -6     // tiny lift so its base sits nicely on ground
+  scale: 0.95,   // makes it span the screen width cleanly
+  parallax: 0.18, // subtle parallax (smaller = more distant)
+  offsetX: 0,     // we’ll center in screen-space (no world push)
+  offsetY: -6
 };
 
 /* ================= CSV & DATA ================= */
@@ -1062,15 +1062,14 @@ function drawAbbeyBG(){
   var w = Math.round(imgAbbeyBG.width  * s);
   var h = Math.round(imgAbbeyBG.height * s);
 
-  // parallax amount (0 = fixed, 1 = same as foreground)
-  var par = (ABBEY_BG.parallax == null ? 0.20 : ABBEY_BG.parallax);
+  // Parallax (0 = fixed to camera, 1 = moves like foreground)
+  var par = (ABBEY_BG.parallax == null ? 0.18 : ABBEY_BG.parallax);
 
-  // anchor the image’s LEFT edge in world space, then parallax it
-  // NOTE: no hard-coded +120 here; we’ll position purely with offsetX
-  var worldLeft = (ABBEY_BG.offsetX || 0);
-  var x = Math.round(worldLeft - (cameraX * par));
+  // ---- KEY CHANGE: center in SCREEN space, then apply a small parallax drift ----
+  // This guarantees the Abbey is visible at cameraX = 0.
+  var x = Math.round((canvas.width - w) / 2 - cameraX * par + (ABBEY_BG.offsetX || 0));
 
-  // keep its feet on the ground, then apply vertical nudge
+  // Keep its feet on the ground line, then apply vertical nudge
   var baseY = GROUND_Y + (ABBEY_BG.offsetY || 0);
   var y = Math.round((baseY - h) - cameraY);
 
