@@ -100,7 +100,7 @@
 
   .screen-bezel{
     position:absolute; left:6%; right:6%; top:7%;
-    aspect-ratio: 5/3;
+    aspect-ratio:4/3;
     background: linear-gradient(180deg, #222, #111 60%, #000);
     border-radius:22px; padding:14px; box-shadow: inset 0 0 0 2px #000;
   }
@@ -263,7 +263,7 @@ var keys = { left:false, right:false, up:false, jump:false, shift:false };
 /* PATCH END */
 /* === PLAYER SPRITE CONFIG (folders + filenames) === */
 var PLAYER_SPR = {
-  scale: 1,   // bump to 2 if sprite is tiny
+  scale: 0.85,   // bump to 2 if sprite is tiny
 
   idle: { dir: "south", frames: ["0.png","1.png","2.png","3.png"], fps: 6 },
   walk: { dir: "east",  frames: ["0.png","1.png","2.png","3.png","4.png","5.png"], fps: 10 },
@@ -1100,17 +1100,23 @@ function drawBuilding(h){
 
   if (h.kind === 'cabin'){
   if (cabinReady){
-    // Draw the PNG at its original pixel size (no scaling)
     var w = imgCabin.width;
     var hgt = imgCabin.height;
+
+    var s = 0.85;                 // cabin scale (match the player scale for cohesion)
+    var dw = Math.round(w * s);
+    var dh = Math.round(hgt * s);
+
+    // Center horizontally in the same 4-tile (64px) footprint,
+    // and keep the base sitting on the platform/ground.
     ctx.drawImage(
       imgCabin,
-      x + (64 - w) / 2,    // horizontally center it around the same tile area
-      y - (hgt - 48),      // shift upward so base sits on the ground
-      w, hgt
+      x + Math.floor((64 - dw) / 2),   // re-center after scaling
+      y - (dh - 48),                   // shift up by the extra height so the base stays planted
+      dw, dh
     );
   } else {
-    drawBlock(map.cabin, 4, 3, x, y); // fallback
+    drawBlock(map.cabin, 4, 3, x, y); // fallback to tiles
   }
 }
 
