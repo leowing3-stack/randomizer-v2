@@ -744,23 +744,35 @@ function buildScene(){
   buildParallax();
   buildPlatforms();   // NEW
   placeHousesOnPlatforms(); // NEW
-  
-   // NEW: let the camera go high enough for tall sprites
   recomputeWorldBounds();
 }
 function buildHouses(){
   houses = [];
   var x = 48, gap = 128;
   var list = (CATEGORY === 'events' ? EVENTS : DEALS);
-  var KINDS = ['cabin','tavern','restaurant']; // only these 3 types
 
+  var KINDS = ['cabin','tavern','restaurant'];
+
+  function pickKind(seed, prev){
+    // try up to 4 times to avoid repeating the previous kind
+    var k = KINDS[randInt(seed, 0, KINDS.length - 1)];
+    for (var tries = 0; tries < 3 && k === prev; tries++){
+      seed += 101;
+      k = KINDS[randInt(seed, 0, KINDS.length - 1)];
+    }
+    return k;
+  }
+
+  var prevKind = null;
   for (var i = 0; i < list.length; i++) {
-    var it = list[i];
+    var it   = list[i];
     var seed = hashId(it.id).length + i * 31;
 
-    var kind = KINDS[randInt(seed, 0, KINDS.length - 1)];
-    var wTiles = 4, hTiles = 3;
-    var w = wTiles * TILE, h = hTiles * TILE;
+    var kind = pickKind(seed, prevKind);
+    prevKind = kind;
+
+    // 4x3 tile footprint (used for alignment; PNGs are scaled inside draw)
+    var w = 4 * TILE, h = 3 * TILE;
 
     houses.push({
       id: it.id,
@@ -836,26 +848,25 @@ function buildPlatforms(){
 }
 
 function placeHousesOnPlatforms(){
-  if (!PLATFORMS.length || !houses.length) return;
+  if (!houses.length){ return; }
 
-  // sort platforms low→high
-  var plats = PLATFORMS.slice().sort((a,b)=>a.y-b.y);
-  var idx = 0;
+  var hasPlatforms = PLATFORMS && PLATFORMS.length > 0;
+  var nextPlat = 0;
 
-  for (var i=0;i<houses.length;i++){
+  for (var i = 0; i < houses.length; i++){
     var h = houses[i];
 
-    // keep first two houses on the ground
-    if (i < 2){
+    if (hasPlatforms && rand01(h.seed + 7) > 0.5){
+      // assign to a platform and center on it
+      var p = PLATFORMS[nextPlat % PLATFORMS.length];
+      nextPlat++;
+      h.baseY = p.y;
+      h.x = p.x + (p.w / 2);
+    } else {
+      // snap to ground
       h.baseY = GROUND_Y;
-      continue;
+      // keep x as generated
     }
-
-    // assign remaining houses cyclically to upper platforms
-    var p = plats[idx % plats.length];
-    h.baseY = p.y;
-    h.x = p.x + (p.w/2); // center on platform
-    idx++;
   }
 }
 function findPlatformUnderX(x, row){
@@ -1046,45 +1057,40 @@ if (cameraY > WORLD_BOTTOM) cameraY = WORLD_BOTTOM;
 
 /* ================= RENDER ================= */
 function render(){
-  // wipe frame completely (prevents ghost trails/banding)
+  // wipe frame completely
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  
-// SKY gradient (full canvas to avoid leftovers)
-var top = 0xBDE4FF, mid = 0x8CC9FF, bot = 0x6BB1F4;
-for (var y = 0; y < canvas.height; y++) {
-  var t = y / canvas.height;
-  var hex = (t < 0.5)
-    ? lerpRGB(top, mid, t / 0.5)
-    : lerpRGB(mid, bot, (t - 0.5) / 0.5);
-  horizLine(0, y, canvas.width, hex);
-}
 
-  // Clouds layer (tile the cloud index)
-  drawCloudLayer(map.cloud, parallax.cloudsFarX, 12 - cameraY, 0.15);
-  if (abbeyBGReady) drawAbbeyBG();
-  drawCloudLayer(map.cloud, parallax.cloudsNearX, 28 - cameraY, 0.30);
+  // SKY gradient
+  var top = 0xBDE4FF, mid = 0x8CC9FF, bot = 0x6BB1F4;
+  for (var y = 0; y < canvas.height; y++) {
+    var t = y / canvas.height;
+    var hex = (t < 0.5)
+      ? lerpRGB(top, mid, t / 0.5)
+      : lerpRGB(mid, bot, (t - 0.5) / 0.5);
+    horizLine(0, y, canvas.width, hex);
+  }
 
-  // Tree silhouettes (parallax)
-  drawTreeline();
+  // ❌ no cloud tiling, no treeline while we wait for real assets
+  if (abbeyBGReady) drawAbbeyBG(); // keep your Abbey landmark
 
-  // Ground
+  // Ground + platforms (no grass caps)
   drawGround();
+  drawPlatforms();
 
   // Fences
-  for (var i=0;i<fences.length;i++){
-    var fx = fences[i].x - cameraX;
-    drawTileIndex(map.fence, fx, (GROUND_Y-10) - cameraY);
+  for (var i = 0; i < fences.length; i++){
+    var fx = Math.round(fences[i].x - cameraX);
+    drawTileIndex(map.fence, fx, Math.round((GROUND_Y-10) - cameraY));
   }
 
   // Buildings
-  for (var h=0; h<houses.length; h++){
+  for (var h = 0; h < houses.length; h++){
     drawBuilding(houses[h]);
   }
 
   // Player
- drawPlayer(Math.round(player.x - cameraX), Math.round(player.y - cameraY));
+  drawPlayer(Math.round(player.x - cameraX), Math.round(player.y - cameraY));
 }
-
 /* ---------- DRAW HELPERS ---------- */
 function drawCloudLayer(tileIdx, scroll, y, speed){
   var start = (-((scroll*speed)|0)) % TILE; if (start>0) start -= TILE;
@@ -1136,14 +1142,20 @@ function drawTreeline(){
 } // ← CLOSE drawTreeline properly
 
 function drawPlatforms(){
+  // simple brown slabs only (no grass/blue)
   for (var i = 0; i < PLATFORMS.length; i++){
     var p  = PLATFORMS[i];
     var sx = Math.round(p.x - cameraX);
     var sy = Math.round(p.y - cameraY);
 
-    // DIRT BODY under each platform (straight strip)
-for (var x = sx; x < sx + p.w; x += 16){
-  ctx.drawImage(imgDirt, x, sy - GRASS_OVERLAP, 16, 16 + GRASS_OVERLAP);
+    // dirt strip 6px tall
+    for (var x = sx; x < sx + p.w; x += 16){
+      ctx.drawImage(imgDirt, x, sy - 6, 16, 12);
+    }
+
+    // tiny shadow edge
+    fillRect(sx, sy - 1, p.w, 1, 0x3b2a4e);
+  }
 }
 
     // 2) GRASS CAP — repeat the cap tile across the top
@@ -1157,19 +1169,20 @@ for (var x = sx; x < sx + p.w; x += 16){
   }
 }
 function drawGround(){
-  // GRASS CAP along ground line (lip overlaps the dirt)
-  if (grassReady){
+ function drawGround(){
+  // simple ground line + dirt fill below it
+  var groundTop = Math.round(GROUND_Y - cameraY);
+
+  // subtle seam/shadow
+  fillRect(0, groundTop - 1, canvas.width, 1, 0x3b2a4e);
+
+  // fill dirt from ground to bottom
+  for (var y = groundTop; y < canvas.height; y += 16){
     for (var x = 0; x < canvas.width; x += 16){
-      ctx.drawImage(imgGrass, x, (GROUND_Y - 16) - cameraY + GRASS_OVERLAP - 1, 16, 16);
-      fillRect(x, (GROUND_Y - 1) - cameraY, 16, 1, GRASS_SEAM_SHADOW);
-    }
-  } else {
-    var variants = Array.isArray(map.grass) ? map.grass : [map.grass];
-    for (var x = 0; x < canvas.width; x += 16){
-      var idx = variants[(((x + cameraX) / 16) % variants.length) | 0];
-      drawTileIndex(idx, x, (GROUND_Y - 8) - cameraY);
+      ctx.drawImage(imgDirt, x, y, 16, 16);
     }
   }
+}
 
   // Platforms (above ground dirt)
   drawPlatforms();
