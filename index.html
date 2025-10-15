@@ -259,6 +259,7 @@ var PHYS = {
   coyoteTime: 0.08,
   jumpBuffer: 0.12
 };
+var GRASS_OVERLAP = 2; // pixels the grass cap dips into the dirt
 /* PATCH START: define keys state */
 var keys = { left:false, right:false, up:false, jump:false, shift:false };
 /* PATCH END */
@@ -1115,13 +1116,13 @@ function drawPlatforms(){
 
     // 1) DIRT FILL (under the top edge)
     for (var x = sx; x < sx + p.w; x += 16){
-      if (dirtReady) ctx.drawImage(imgDirt, x, sy, 16, 16);
+      if (dirtReady) ctx.drawImage(imgDirt, x, sy - GRASS_OVERLAP, 16, 16 + GRASS_OVERLAP);
       else           fillRect(x, sy, 16, 6, 0x5f4db0);
     }
 
     // 2) GRASS CAP (lip sits ON the top, overhanging down)
     for (var x = sx; x < sx + p.w; x += 16){
-      if (grassReady) ctx.drawImage(imgGrass, x, sy - 16, 16, 16);
+      if (grassReady)ctx.drawImage(imgGrass, x, sy - 16 + GRASS_OVERLAP, 16, 16);
       else            fillRect(x, sy-1, 16, 2, 0x6bdc5a);
     }
   }
@@ -1131,7 +1132,7 @@ function drawGround(){
   // GRASS CAP along ground line (lip overlaps the dirt)
   if (grassReady){
     for (var x = 0; x < canvas.width; x += 16){
-      ctx.drawImage(imgGrass, x, (GROUND_Y - 16) - cameraY, 16, 16);
+      ctx.drawImage(imgGrass, x, (GROUND_Y - 16) - cameraY + GRASS_OVERLAP, 16, 16);
     }
   } else {
     var variants = Array.isArray(map.grass) ? map.grass : [map.grass];
