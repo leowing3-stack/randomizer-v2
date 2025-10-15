@@ -1109,33 +1109,20 @@ function drawTreeline(){
 }
 function drawPlatforms(){
   for (var i=0;i<PLATFORMS.length;i++){
-    var p = PLATFORMS[i];
+    var p  = PLATFORMS[i];
     var sx = Math.round(p.x - cameraX);
     var sy = Math.round(p.y - cameraY);
 
     // 1) DIRT FILL (under the top edge)
-    var fillH = 16; // thickness of the platform body
     for (var x = sx; x < sx + p.w; x += 16){
       if (dirtReady) ctx.drawImage(imgDirt, x, sy, 16, 16);
-      else { fillRect(x, sy, 16, 6, 0x5f4db0); }
+      else           fillRect(x, sy, 16, 6, 0x5f4db0);
     }
 
     // 2) GRASS CAP (lip sits ON the top, overhanging down)
     for (var x = sx; x < sx + p.w; x += 16){
       if (grassReady) ctx.drawImage(imgGrass, x, sy - 16, 16, 16);
-      else { fillRect(x, sy-1, 16, 2, 0x6bdc5a); }
-    }
-  }
-}
-
-    // --- GRASS CAP: sits on the very top edge (overhang lip)
-    for (var x = sx; x < sx + p.w; x += 16){
-      if (grassReady){
-        ctx.drawImage(imgGrass, x, sy - 16, 16, 16);
-      } else {
-        // fallback: thin green bar
-        fillRect(x, sy-1, 16, 2, 0x6bdc5a);
-      }
+      else            fillRect(x, sy-1, 16, 2, 0x6bdc5a);
     }
   }
 }
@@ -1147,7 +1134,6 @@ function drawGround(){
       ctx.drawImage(imgGrass, x, (GROUND_Y - 16) - cameraY, 16, 16);
     }
   } else {
-    // fallback to atlas grass if PNG not ready
     var variants = Array.isArray(map.grass) ? map.grass : [map.grass];
     for (var x = 0; x < canvas.width; x += 16){
       var idx = variants[(((x + cameraX) / 16) % variants.length) | 0];
@@ -1158,7 +1144,7 @@ function drawGround(){
   // Platforms (above ground dirt)
   drawPlatforms();
 
-  // Existing purple soil body (tiles) — keep this
+  // Purple soil body
   for (var y = GROUND_Y - cameraY; y < canvas.height; y += TILE){
     for (var x = 0; x < canvas.width; x += TILE){
       drawTileIndex(map.dirt, x, y);
