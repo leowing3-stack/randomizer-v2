@@ -182,7 +182,7 @@
         <div class="screen-inner">
           <canvas id="screen" width="256" height="192" aria-label="Game screen"></canvas>
           <div id="hint" class="hint">↑ ENTER</div>
-          <div id="tweakBadge" class="tweak-badge">TWEAK: 1=Grass 2=Dirt 3=Rock 4=Cloud 5=Fence 6=Tree 7=Cabin  0=Player • [ / ] cycle</div>
+          <div id="tweakBadge" class="tweak-badge">TWEAK: 1=Grass 2=Dirt 3=Rock 4=Cloud 6=Tree 7=Cabin  0=Player • [ / ] cycle</div>
         </div>
         <div class="screen-label">SOCIALBURST DOT MATRIX</div>
       </div>
@@ -382,7 +382,7 @@ var parallax = { cloudsNearX:0, cloudsFarX:0, treeX:0 };
 
 /* Scene */
 /* Scene */
-var houses=[], fences=[], pines=[];
+var houses=[], pines=[];
 
 /* One-way platform segments (world coordinates) */
 var PLATFORMS = [];
@@ -394,7 +394,6 @@ var defaultMap = {
   dirt:4,               // base dirt tile
   rock:5,               // dirt with rock
   cloud:6,              // cloud tile
-  fence:7,              // fence tile (16x16; engine repeats)
   tree:8,               // big tree (drawn as a 3x4 tile block)
   cabin:9,              // cabin top-left (4x3 tiles area)
   player:65             // player 16x16 (single frame used as base; we offset for walk)
@@ -739,8 +738,7 @@ function recomputeWorldBounds(){
 }
 
 function buildScene(){
-  buildHouses();
-  buildFences();      // still draws ground fences between ground houses
+  buildHouses(); 
   buildParallax();
   buildPlatforms();   // NEW
   placeHousesOnPlatforms(); // NEW
@@ -790,15 +788,7 @@ function buildHouses(){
 
   worldW = Math.max(256, (houses.length ? houses[houses.length - 1].x + 160 : 256));
 }
-function buildFences(){
-  fences=[];
-  for (var i=0;i<houses.length-1;i++){
-    var left=houses[i], right=houses[i+1];
-    var start= left.x + Math.floor(left.w/2) + 12;
-    var end  = right.x - Math.floor(right.w/2) - 12;
-    for (var x=start; x<end; x+=TILE) fences.push({x:x});
-  }
-}
+
 function buildParallax(){
   pines=[];
   for (var x=0; x<worldW; x+=28){
@@ -1070,11 +1060,6 @@ function render(){
   drawGround();
   drawPlatforms();
 
-  // Fences
-  for (var i = 0; i < fences.length; i++){
-    var fx = Math.round(fences[i].x - cameraX);
-    drawTileIndex(map.fence, fx, Math.round((GROUND_Y-10) - cameraY));
-  }
 
   // Buildings
   for (var h = 0; h < houses.length; h++){
@@ -1122,26 +1107,23 @@ function drawPlatforms(){
     var sx = Math.round(p.x - cameraX);
     var sy = Math.round(p.y - cameraY);
 
-    // A) PLATFORM BODY (so the sky never shows through)
+    // PLATFORM BODY (dirt slab so the sky can't show through)
     if (dirtReady){
       for (var xx = sx; xx < sx + p.w; xx += 16){
-        // 12px slab is enough, draw using the dirt tile
         ctx.drawImage(imgDirt, xx, sy, 16, 16);
       }
     } else {
-      // fallback earth tone (NOT blue)
-      fillRect(sx, sy, p.w, 12, 0x6b4a2f);
+      fillRect(sx, sy, p.w, 12, 0x6b4a2f); // earthy fallback, not blue
     }
 
-    // B) seam/shadow along top
+    // seam/shadow along the top
     fillRect(sx, sy - 1, p.w, 1, GRASS_SEAM_SHADOW);
 
-    // C) grass cap across the top
+    // grass cap
     for (var x = sx; x < sx + p.w; x += 16){
       if (grassReady){
         ctx.drawImage(imgGrass, x, sy - 16 + GRASS_OVERLAP, 16, 16);
       } else {
-        // keep a dark line if grass missing
         fillRect(x, sy - 1, 16, 1, GRASS_SEAM_SHADOW);
       }
     }
@@ -1153,17 +1135,16 @@ function drawGround(){
   // seam just above the grass
   fillRect(0, groundTop - 1, canvas.width, 1, 0x3b2a4e);
 
-  // GRASS CAP on the ground
+  // GRASS CAP on the ground line
   for (var x = 0; x < canvas.width; x += 16){
     if (grassReady){
       ctx.drawImage(imgGrass, x, groundTop - 16 + GRASS_OVERLAP, 16, 16);
     } else {
-      // keep a dark line if grass missing
       fillRect(x, groundTop - 1, 16, 1, GRASS_SEAM_SHADOW);
     }
   }
 
-  // DIRT BODY below the ground line
+  // DIRT BODY below the ground line only
   if (dirtReady){
     for (var y = groundTop; y < canvas.height; y += 16){
       for (var x2 = 0; x2 < canvas.width; x2 += 16){
@@ -1171,7 +1152,7 @@ function drawGround(){
       }
     }
   } else {
-    // brown fallback (prevents any sky showing at the bottom)
+    // brown fallback if dirt texture not loaded
     fillRect(0, groundTop, canvas.width, canvas.height - groundTop, 0x6b4a2f);
   }
 }
@@ -1355,16 +1336,6 @@ function lerpRGB(a,b,t){
   return (rr<<16)|(gg<<8)|bb2;
 }
 
-  // Keep the dirt pattern “locked” to world space so no seams show while moving
-  ctx.save();
-  ctx.translate(- (cameraX % 16), - (cameraY % 16));
-  ctx.fillStyle = dirtPattern;
-
-  // Draw a clean rect of continuous dirt
-  var rx = Math.round(x + (cameraX % 16));
-  var ry = Math.round(y + (cameraY % 16));
-  ctx.fillRect(rx, ry, Math.round(w), Math.round(h));
-  ctx.restore();
 /* ---------- Pixel text 3x5 ---------- */
 var FONT={A:["010","101","111","101","101"],B:["110","101","110","101","110"],C:["011","100","100","100","011"],D:["110","101","101","101","110"],E:["111","100","110","100","111"],F:["111","100","110","100","100"],G:["011","100","101","101","011"],H:["101","101","111","101","101"],I:["111","010","010","010","111"],J:["001","001","001","101","010"],K:["101","101","110","101","101"],L:["100","100","100","100","111"],M:["101","111","111","101","101"],N:["101","111","111","111","101"],O:["010","101","101","101","010"],P:["110","101","110","100","100"],Q:["010","101","101","111","011"],R:["110","101","110","101","101"],S:["011","100","010","001","110"],T:["111","010","010","010","010"],U:["101","101","101","101","111"],V:["101","101","101","101","010"],W:["101","101","111","111","101"],X:["101","101","010","101","101"],Y:["101","101","010","010","010"],Z:["111","001","010","100","111"]," ":[ "000","000","000","000","000" ]};
 function pixelText(s,x,y,color,maxWidth){
@@ -1385,7 +1356,7 @@ function randInt(seed,min,max){ return Math.floor(rand01(seed)*(max-min+1))+min;
 function loadTileMap(){ try{ return JSON.parse(localStorage.getItem('sb_tilemap')||''); }catch(e){ return null; } }
 function saveTileMap(){ localStorage.setItem('sb_tilemap', JSON.stringify(map)); }
 function pickKey(num){
-  var keys=['grass','dirt','rock','cloud','fence','tree','cabin','player'];
+  var keys=['grass','dirt','rock','cloud','tree','cabin','player'];
   var k = (num===0)?'player':keys[num-1];
   tweak.key=k; tweak.index=0;
 }
