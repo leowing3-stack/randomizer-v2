@@ -1142,24 +1142,32 @@ function drawTreeline(){
 } // ← CLOSE drawTreeline properly
 
 function drawPlatforms(){
-  // simple brown slabs only (no grass caps or blue placeholders)
   for (var i = 0; i < PLATFORMS.length; i++){
     var p  = PLATFORMS[i];
     var sx = Math.round(p.x - cameraX);
     var sy = Math.round(p.y - cameraY);
 
-    // dirt strip (tile the dirt image across)
+    // 1) seam/shadow along the top edge
+    fillRect(sx, sy - 1, p.w, 1, GRASS_SEAM_SHADOW);
+
+    // 2) grass cap across the top
     for (var x = sx; x < sx + p.w; x += 16){
-      if (dirtReady){
-        ctx.drawImage(imgDirt, x, sy - 6, 16, 12);
+      if (grassReady){
+        // aligns with ground grass; slight overlap sells the look
+        ctx.drawImage(imgGrass, x, sy - 16 + GRASS_OVERLAP, 16, 16);
+      } else {
+        fillRect(x, sy - 1, 16, 1, GRASS_SEAM_SHADOW);
       }
     }
 
-    // tiny dark edge line for depth
-    fillRect(sx, sy - 1, p.w, 1, 0x3b2a4e);
+    // 3) a shallow dirt lip under the cap so it feels “solid”
+    for (var x2 = sx; x2 < sx + p.w; x2 += 16){
+      if (dirtReady){
+        ctx.drawImage(imgDirt, x2, sy, 16, 16); // only the top 6–10px show
+      }
+    }
   }
 }
-
 function drawGround(){
   // simple ground line + dirt fill below it
   var groundTop = Math.round(GROUND_Y - cameraY);
