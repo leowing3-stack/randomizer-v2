@@ -1160,16 +1160,6 @@ function drawPlatforms(){
   }
 }
 
-    // 2) GRASS CAP — repeat the cap tile across the top
-    for (var x = sx; x < sx + p.w; x += 16){
-      if (grassReady){
-        ctx.drawImage(imgGrass, x, sy - 16 + GRASS_OVERLAP - 1, 16, 16);
-      } else {
-        fillRect(x, sy - 1, 16, 1, GRASS_SEAM_SHADOW);
-      }
-    }
-  }
-}
 function drawGround(){
   // simple ground line + dirt fill below it
   var groundTop = Math.round(GROUND_Y - cameraY);
@@ -1187,17 +1177,6 @@ function drawGround(){
   }
 }
 
-  // Platforms (above ground dirt)
-  drawPlatforms();
-
-  // DIRT BODY using the PNG, tiled in a grid from the ground to bottom
-  var dirtTop = GROUND_Y - cameraY;
-  for (var y = dirtTop; y < canvas.height; y += 16){
-    for (var x = 0; x < canvas.width; x += 16){
-      ctx.drawImage(imgDirt, x, y, 16, 16);
-    }
-  }
-} // ← drawGround() properly closed
 function drawBuilding(h){
   var screenX = Math.round(h.x - cameraX);
   var baseY   = (typeof h.baseY === "number") ? h.baseY : GROUND_Y;
