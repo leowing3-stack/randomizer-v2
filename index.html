@@ -389,8 +389,6 @@ var PLATFORMS = [];
 
 // Minimal stub map (only for pixel fallback)
 var map = { player: 65 };
-var map = loadTileMap() || defaultMap;
-var tweak = { on:false, key:'grass', index:0 };
 /* === LOAD PER-FRAME PNGs === */
 function loadImage(url){
   return new Promise(function(resolve){
@@ -445,11 +443,10 @@ function loadPlayerSprites(){
 /* ================= BOOT ================= */
 window.addEventListener('DOMContentLoaded', function(){
   wireUI();
-  Promise.all([
-    loadAtlas("./SocialBurstRandomizer/sprites/socialburst_tileset.png"),
-    loadPlayerSprites(),
-    hydrate()
-  ])
+Promise.all([
+  loadPlayerSprites(),
+  hydrate()
+])
   .catch(function(err){
     console.warn("Boot continuing despite error:", err);
   })
@@ -509,12 +506,7 @@ if (e.key === 'z' || e.key === 'Z') {
 
 
     // Tweak mode (unchanged)
-    if (e.key==='t' || e.key==='T'){ tweak.on=!tweak.on; document.querySelector('.screen-inner').classList.toggle('tweak-on', tweak.on); }
-    if (!tweak.on) return;
-    if (e.key==='['){ cycleTile(-1); }
-    if (e.key===']'){ cycleTile(1); }
-    var num="1234567890".indexOf(e.key);
-    if (num>=0) pickKey(num);
+
   });
   document.addEventListener('keyup', function(e){
     if (e.key==='ArrowLeft' || e.key==='a' || e.key==='A') keys.left = false;
@@ -1140,27 +1132,21 @@ function drawBuilding(h){
       var w = Math.round(imgCabin.width * s);
       var dh = Math.round(imgCabin.height * s);
       ctx.drawImage(imgCabin, x + Math.floor((64 - w) / 2), y - (dh - 48), w, dh);
-    } else {
-      drawBlock(map.cabin, 4, 3, x, y);
-    }
+    } else 
   }
   else if (h.kind === 'tavern'){
     if (tavernReady){
       var w2 = Math.round(imgTavern.width * s);
       var dh2 = Math.round(imgTavern.height * s);
       ctx.drawImage(imgTavern, x + Math.floor((64 - w2) / 2), y - (dh2 - 48), w2, dh2);
-    } else {
-      drawBlock(map.cabin, 4, 3, x, y);
-    }
+    } else 
   }
   else if (h.kind === 'restaurant'){
     if (restaurantReady){
       var w3 = Math.round(imgRestaurant.width * s);
       var dh3 = Math.round(imgRestaurant.height * s);
       ctx.drawImage(imgRestaurant, x + Math.floor((64 - w3) / 2), y - (dh3 - 48), w3, dh3);
-    } else {
-      drawBlock(map.cabin, 4, 3, x, y);
-    }
+    } else
   }
 
   pixelText(h.title.toUpperCase(), x, y - 10, 0x143C0D, h.w);
@@ -1170,11 +1156,7 @@ function drawPlayer(x, y){
   // shadow
   fillRect(x-3, y, 8, 1, 0x2b1b30);
 
-  // tilesheet fallback if PNGs not ready
-  if (typeof map.player === 'number' && !playerGfx.ready){
-    drawTileIndex(map.player, x-4, y-16);
-    return;
-  }
+
 
   if (playerGfx.ready){
     var frames, fps, idx;
