@@ -71,7 +71,7 @@
   .gb{
     position:relative;
     width:min(920px, 94vw);
-    aspect-ratio: 3/5;
+    aspect-ratio: 4/3;
     background: linear-gradient(145deg, var(--shell-light), var(--shell) 40%, var(--shell-dark) 100%);
     border-radius:36px;
     box-shadow: var(--shadow);
@@ -180,7 +180,7 @@
     <div class="screen-bezel">
       <div class="screen">
         <div class="screen-inner">
-          <canvas id="screen" width="256" height="160" aria-label="Game screen"></canvas>
+          <canvas id="screen" width="256" height="192" aria-label="Game screen"></canvas>
           <div id="hint" class="hint">↑ ENTER</div>
           <div id="tweakBadge" class="tweak-badge">TWEAK: 1=Grass 2=Dirt 3=Rock 4=Cloud 5=Fence 6=Tree 7=Cabin 8=Cottage 9=Windmill 0=Player • [ / ] cycle</div>
         </div>
@@ -237,7 +237,7 @@
 <script>
 /* ================= BASIC CONFIG ================= */
 var CSV_URL = "https://docs.google.com/spreadsheets/d/<SHEET_ID>/pub?gid=<GID_TODAY>&single=true&output=csv";
-var TILE = 16, GROUND_Y = 120;
+var TILE = 16, GROUND_Y = 136;
 var PHYS = {
   // horizontal tuning
   walkSpeed: 100,          // was 60
@@ -965,12 +965,7 @@ var k = (player.vy < 0 ? 28 : 16) * dt;   // was 14*dt
 if (k > 1) k = 1;
 cameraY += (targetY - cameraY) * k;
 
-// hard cap the maximum lag so platforms never feel behind
-var maxLag = 20; // px
-var lag = targetY - cameraY;
-if (Math.abs(lag) > maxLag) {
-  cameraY = targetY - Math.sign(lag) * maxLag;
-}
+
 
 // clamp to world limits
 if (cameraY < WORLD_TOP)    cameraY = WORLD_TOP;
