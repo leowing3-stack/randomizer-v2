@@ -1124,31 +1124,34 @@ function drawBuilding(h){
   var baseY   = (typeof h.baseY === "number") ? h.baseY : GROUND_Y;
   var x = screenX - Math.floor(h.w / 2);
   var y = Math.round((baseY - h.h) - cameraY);
-
-  var s = 0.85; // same scale for all buildings
+  var s = 0.85; // consistent scale for all buildings
 
   if (h.kind === 'cabin'){
     if (cabinReady){
       var w = Math.round(imgCabin.width * s);
       var dh = Math.round(imgCabin.height * s);
       ctx.drawImage(imgCabin, x + Math.floor((64 - w) / 2), y - (dh - 48), w, dh);
-    } else 
+    }
+    // no fallback
   }
   else if (h.kind === 'tavern'){
     if (tavernReady){
       var w2 = Math.round(imgTavern.width * s);
       var dh2 = Math.round(imgTavern.height * s);
       ctx.drawImage(imgTavern, x + Math.floor((64 - w2) / 2), y - (dh2 - 48), w2, dh2);
-    } else 
+    }
+    // no fallback
   }
   else if (h.kind === 'restaurant'){
     if (restaurantReady){
       var w3 = Math.round(imgRestaurant.width * s);
       var dh3 = Math.round(imgRestaurant.height * s);
       ctx.drawImage(imgRestaurant, x + Math.floor((64 - w3) / 2), y - (dh3 - 48), w3, dh3);
-    } else
+    }
+    // no fallback
   }
 
+  // Title above each building
   pixelText(h.title.toUpperCase(), x, y - 10, 0x143C0D, h.w);
 }
 
