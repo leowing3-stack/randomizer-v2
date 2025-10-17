@@ -240,7 +240,7 @@
 var CSV_URL = "https://docs.google.com/spreadsheets/d/<SHEET_ID>/pub?gid=<GID_TODAY>&single=true&output=csv";
 var TILE = 16, GROUND_Y = 136;
 var CAP_H = 16;                  // grass cap height (tile)
-var GRASS_PAD = 0;               // lift dirt up 2px to meet cap nicely
+var GRASS_PAD = 2;               // lift dirt up 2px to meet cap nicely
 var GROUND_SURFACE_Y = GROUND_Y - CAP_H;
 var PHYS = {
   // horizontal tuning
@@ -1068,20 +1068,21 @@ function drawPlatforms(){
     var sx = Math.floor(p.x - cameraX);
     var sy = Math.floor(p.y - cameraY);   // p.y is the walking surface (cap bottom)
 
-    // DIRT — begins exactly at the cap bottom (sy)
-    var ph = 16;
+    // DIRT — tuck up under the grass by GRASS_PAD
+    var dirtTop = sy - GRASS_PAD;
+    var ph = 16 + GRASS_PAD;
     if (dirtReady){
       for (var xx = sx; xx < sx + p.w; xx += TILE){
-        ctx.drawImage(imgDirt, xx, sy, TILE, ph);
+        ctx.drawImage(imgDirt, xx, dirtTop, TILE, ph);
       }
     } else {
-      fillRect(sx, sy, p.w, ph, 0x6b4a2f);
+      fillRect(sx, dirtTop, p.w, ph, 0x6b4a2f);
     }
 
-    // Anti-gap seam (covers rounding)
-    fillRect(sx, sy - 1, p.w, 1, 0x6b4a2f);
+    // tiny seam to cover rounding
+    fillRect(sx, dirtTop - 1, p.w, 1, 0x6b4a2f);
 
-    // GRASS cap — sits on top of the dirt
+    // GRASS cap — sits on top
     if (grassReady){
       for (var gx = sx; gx < sx + p.w; gx += TILE){
         ctx.drawImage(imgGrass, gx, sy - CAP_H, TILE, TILE);
@@ -1090,26 +1091,26 @@ function drawPlatforms(){
   }
 }
 function drawGround(){
-  // groundTop = walking surface = cap bottom
-  var groundTop = Math.floor(GROUND_Y - cameraY);
-  // world-locked tiling so ground scrolls past the player
-  var startX    = - (Math.floor(cameraX) % TILE);
+  var groundTop = Math.floor(GROUND_Y - cameraY);     // walking surface (cap bottom)
+  var startX    = - (Math.floor(cameraX) % TILE);     // world-locked scroll
 
-  // DIRT — starts exactly at groundTop
+  // DIRT — start GRASS_PAD higher so it touches the grass
+  var dirtTop = groundTop - GRASS_PAD;
+
   if (dirtReady){
-    for (var y = groundTop; y < canvas.height; y += TILE){
+    for (var y = dirtTop; y < canvas.height; y += TILE){
       for (var x2 = startX; x2 < canvas.width + TILE; x2 += TILE){
         ctx.drawImage(imgDirt, x2, y, TILE, TILE);
       }
     }
   } else {
-    fillRect(0, groundTop, canvas.width, canvas.height - groundTop, 0x6b4a2f);
+    fillRect(0, dirtTop, canvas.width, canvas.height - dirtTop, 0x6b4a2f);
   }
 
-  // Anti-gap seam (covers rounding)
-  fillRect(0, groundTop - 1, canvas.width, 1, 0x6b4a2f);
+  // tiny seam to cover rounding
+  fillRect(0, dirtTop - 1, canvas.width, 1, 0x6b4a2f);
 
-  // GRASS cap — sits on top of dirt
+  // GRASS cap — sits on top
   if (grassReady){
     for (var x = startX; x < canvas.width + TILE; x += TILE){
       ctx.drawImage(imgGrass, x, groundTop - CAP_H, TILE, TILE);
