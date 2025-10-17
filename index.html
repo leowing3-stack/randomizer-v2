@@ -239,7 +239,6 @@
 
 var CSV_URL = "https://docs.google.com/spreadsheets/d/<SHEET_ID>/pub?gid=<GID_TODAY>&single=true&output=csv";
 var TILE = 16, GROUND_Y = 136;
-var TILE = 16, GROUND_Y = 136;
 var CAP_H = 16;                  // grass cap height (tile)
 var GRASS_PAD = 2;               // lift dirt up 2px to meet cap nicely
 var GROUND_SURFACE_Y = GROUND_Y - CAP_H;
@@ -811,17 +810,18 @@ function placeHousesOnPlatforms(){
 
   for (var i = 0; i < houses.length; i++){
     var h = houses[i];
+
     if (hasPlatforms && rand01(h.seed + 7) > 0.5){
       var p = PLATFORMS[nextPlat % PLATFORMS.length];
       nextPlat++;
-      h.baseY = p.y - CAP_H;                // <-- sit ON the platform grass
+      h.baseY = p.y;                  // ✅ sit ON the platform’s grass surface
       h.x = p.x + (p.w / 2);
     } else {
-      h.baseY = GROUND_SURFACE_Y;           // <-- sit ON the ground grass
+      h.baseY = GROUND_Y;             // ✅ sit ON the ground grass surface
+      // keep h.x as generated
     }
   }
 }
-
 
 
 /* ================= GAME LOOP ================= */
