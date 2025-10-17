@@ -239,6 +239,10 @@
 
 var CSV_URL = "https://docs.google.com/spreadsheets/d/<SHEET_ID>/pub?gid=<GID_TODAY>&single=true&output=csv";
 var TILE = 16, GROUND_Y = 136;
+var TILE = 16, GROUND_Y = 136;
+var CAP_H = 16;                  // grass cap height (tile)
+var GRASS_PAD = 2;               // lift dirt up 2px to meet cap nicely
+var GROUND_SURFACE_Y = GROUND_Y - CAP_H;
 var PHYS = {
   // horizontal tuning
   walkSpeed: 100,          // was 60
@@ -800,24 +804,20 @@ function buildPlatforms(){
 }
 
 function placeHousesOnPlatforms(){
-  if (!houses.length){ return; }
+  if (!houses.length) return;
 
   var hasPlatforms = PLATFORMS && PLATFORMS.length > 0;
   var nextPlat = 0;
 
   for (var i = 0; i < houses.length; i++){
     var h = houses[i];
-
     if (hasPlatforms && rand01(h.seed + 7) > 0.5){
-      // assign to a platform and center on it
       var p = PLATFORMS[nextPlat % PLATFORMS.length];
       nextPlat++;
-      h.baseY = p.y;
+      h.baseY = p.y - CAP_H;                // <-- sit ON the platform grass
       h.x = p.x + (p.w / 2);
     } else {
-      // snap to ground
-      h.baseY = GROUND_Y;
-      // keep x as generated
+      h.baseY = GROUND_SURFACE_Y;           // <-- sit ON the ground grass
     }
   }
 }
@@ -1067,41 +1067,43 @@ function drawPlatforms(){
   for (var i = 0; i < PLATFORMS.length; i++){
     var p  = PLATFORMS[i];
     var sx = Math.round(p.x - cameraX);
-    var sy = Math.round(p.y - cameraY);
+    var sy = Math.round(p.y - cameraY);  // p.y = dirt seam line for this platform
 
-    // DIRT SLAB – at least 16px high so the grass cap can sit on it
-    var ph = 16;
+    // DIRT SLAB – start a hair higher so it touches the cap (pad up)
+    var dirtTop = sy - GRASS_PAD;
+    var ph = 16 + GRASS_PAD;
     if (dirtReady){
-      for (var xx = sx; xx < sx + p.w; xx += 16){
-        ctx.drawImage(imgDirt, xx, sy, 16, ph);
+      for (var xx = sx; xx < sx + p.w; xx += TILE){
+        ctx.drawImage(imgDirt, xx, dirtTop, TILE, ph);
       }
     } else {
-      fillRect(sx, sy, p.w, ph, 0x6b4a2f);
+      fillRect(sx, dirtTop, p.w, ph, 0x6b4a2f);
     }
 
-    // GRASS CAP – rests directly on the slab’s top
-    for (var x = sx; x < sx + p.w; x += 16){
-      if (grassReady){
-        ctx.drawImage(imgGrass, x, sy - 16, 16, 16);
+    // GRASS CAP – sits on top; player/house base is p.y - CAP_H
+    if (grassReady){
+      for (var gx = sx; gx < sx + p.w; gx += TILE){
+        ctx.drawImage(imgGrass, gx, sy - CAP_H, TILE, TILE);
       }
     }
   }
 }
 function drawGround(){
-  var groundTop = Math.round(GROUND_Y - cameraY);
+  var groundTop = Math.round(GROUND_Y - cameraY);          // dirt start
+  var startX = - (Math.round(cameraX) % TILE);              // lock to world grid
 
-  // 1) GRASS CAP – bottom of the 16x16 tile sits exactly on the ground line
-  for (var x = 0; x < canvas.width; x += 16){
-    if (grassReady){
-      ctx.drawImage(imgGrass, x, groundTop - 16, 16, 16);
+  // GRASS CAP – bottom of tile sits exactly on groundTop
+  if (grassReady){
+    for (var x = startX; x < canvas.width + TILE; x += TILE){
+      ctx.drawImage(imgGrass, x, groundTop - CAP_H, TILE, TILE);
     }
   }
 
-  // 2) DIRT BODY – starts exactly at the ground line (no seam/shadow line)
+  // DIRT BODY – tiles anchored to world grid as well
   if (dirtReady){
-    for (var y = groundTop; y < canvas.height; y += 16){
-      for (var x2 = 0; x2 < canvas.width; x2 += 16){
-        ctx.drawImage(imgDirt, x2, y, 16, 16);
+    for (var y = groundTop; y < canvas.height; y += TILE){
+      for (var x2 = startX; x2 < canvas.width + TILE; x2 += TILE){
+        ctx.drawImage(imgDirt, x2, y, TILE, TILE);
       }
     }
   } else {
