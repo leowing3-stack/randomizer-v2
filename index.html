@@ -259,8 +259,8 @@ var PHYS = {
   coyoteTime: 0.08,
   jumpBuffer: 0.12
 };
-var GRASS_OVERLAP = 4; // pixels the grass cap dips into the dirt
-var GRASS_SEAM_SHADOW = 0x3b2a4e;
+var GRASS_OVERLAP = 0;          // we’re not using overlap anymore
+var GRASS_SEAM_SHADOW = 0x3b2a4e; // keep if you like, but we won’t draw seam lines
 /* PATCH START: define keys state */
 var keys = { left:false, right:false, up:false, jump:false, shift:false };
 /* PATCH END */
@@ -779,7 +779,7 @@ function buildPlatforms(){
   var y = firstY;
   var dir = 1;
   for (var i = 0; i < 15; i++){
-    PLATFORMS.push({ x:x, y:y, w:width, h:6, row:i });
+    PLATFORMS.push({ x:x, y:y, w:width, h:16, row:i });
 
     // ensure next platform reachable both vertically & horizontally
     var nextX = x + dir * randInt(i+99, gapMin, gapMax);
@@ -1069,24 +1069,20 @@ function drawPlatforms(){
     var sx = Math.round(p.x - cameraX);
     var sy = Math.round(p.y - cameraY);
 
-    // PLATFORM BODY (dirt slab so the sky can't show through)
+    // DIRT SLAB – at least 16px high so the grass cap can sit on it
+    var ph = 16;
     if (dirtReady){
       for (var xx = sx; xx < sx + p.w; xx += 16){
-        ctx.drawImage(imgDirt, xx, sy, 16, 16);
+        ctx.drawImage(imgDirt, xx, sy, 16, ph);
       }
     } else {
-      fillRect(sx, sy, p.w, 12, 0x6b4a2f); // earthy fallback, not blue
+      fillRect(sx, sy, p.w, ph, 0x6b4a2f);
     }
 
-    // seam/shadow along the top
-    fillRect(sx, sy - 1, p.w, 1, GRASS_SEAM_SHADOW);
-
-    // grass cap
+    // GRASS CAP – rests directly on the slab’s top
     for (var x = sx; x < sx + p.w; x += 16){
       if (grassReady){
-        ctx.drawImage(imgGrass, x, sy - 16 + GRASS_OVERLAP, 16, 16);
-      } else {
-        fillRect(x, sy - 1, 16, 1, GRASS_SEAM_SHADOW);
+        ctx.drawImage(imgGrass, x, sy - 16, 16, 16);
       }
     }
   }
@@ -1094,19 +1090,14 @@ function drawPlatforms(){
 function drawGround(){
   var groundTop = Math.round(GROUND_Y - cameraY);
 
-  // seam just above the grass
-  fillRect(0, groundTop - 1, canvas.width, 1, 0x3b2a4e);
-
-  // GRASS CAP on the ground line
+  // 1) GRASS CAP – bottom of the 16x16 tile sits exactly on the ground line
   for (var x = 0; x < canvas.width; x += 16){
     if (grassReady){
-      ctx.drawImage(imgGrass, x, groundTop - 12 + GRASS_OVERLAP, 16, 16);
-    } else {
-      fillRect(x, groundTop - 2, 16, 2, GRASS_SEAM_SHADOW);
+      ctx.drawImage(imgGrass, x, groundTop - 16, 16, 16);
     }
   }
 
-  // DIRT BODY below the ground line only
+  // 2) DIRT BODY – starts exactly at the ground line (no seam/shadow line)
   if (dirtReady){
     for (var y = groundTop; y < canvas.height; y += 16){
       for (var x2 = 0; x2 < canvas.width; x2 += 16){
@@ -1114,7 +1105,6 @@ function drawGround(){
       }
     }
   } else {
-    // brown fallback if dirt texture not loaded
     fillRect(0, groundTop, canvas.width, canvas.height - groundTop, 0x6b4a2f);
   }
 }
