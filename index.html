@@ -773,13 +773,7 @@ function buildHouses(){
   worldW = Math.max(256, houses.length ? (houses[houses.length - 1].x + 160) : 256);
 }
 
-function buildParallax(){
-  pines=[];
-  for (var x=0; x<worldW; x+=28){
-    var h=randInt(x+13, 3, 5); // rows of tiles tall
-    pines.push({x:x+randInt(x+7,-4,6), rows:h});
-  }
-}
+function buildParallax(){ pines = []; }
 function buildPlatforms(){
   PLATFORMS = [];
 
