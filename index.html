@@ -243,6 +243,22 @@ var CAP_H = 16;                  // grass cap height (tile)
 var GRASS_PAD = 5;        
 var DIRT_OVERLAP = 1;      
 var GROUND_SURFACE_Y = GROUND_Y - CAP_H;
+
+// --- RANDOM SEED SYSTEM ---
+// Gives a new random layout each time the page loads
+function mulberry32(a){ return function(){ let t=a+=0x6D2B79F5; t=Math.imul(t^t>>>15,t|1); t^=t+Math.imul(t^t>>>7,t|61); return ((t^t>>>14)>>>0)/4294967296; }; }
+
+// New random seed every load (you can later swap this for a saved seed if you want consistency)
+const RUN_SEED = (window.crypto && crypto.getRandomValues)
+  ? crypto.getRandomValues(new Uint32Array(1))[0]
+  : (Date.now() ^ (Math.random()*0x7fffffff)|0);
+
+// Actual RNG functions
+const rand = mulberry32(RUN_SEED);
+function r01(){ return rand(); }
+function rint(min,max){ return Math.floor(r01()*(max-min+1))+min; }
+function rpick(arr){ return arr[Math.floor(r01()*arr.length)]; }
+
 var PHYS = {
   // horizontal tuning
   walkSpeed: 100,          // was 60
@@ -712,31 +728,33 @@ function buildScene(){
 }
 function buildHouses(){
   houses = [];
-  var x = 48, gap = 128;
-  var list = (CATEGORY === 'events' ? EVENTS : DEALS);
 
-  var KINDS = ['cabin','tavern','restaurant'];
+  // Where to start placing houses and how far apart they are (both randomized each load)
+  let xStart = rint(40, 70);
+  let gapMin = 110, gapMax = 150;
 
-  function pickKind(seed, prev){
-    // try up to 4 times to avoid repeating the previous kind
-    var k = KINDS[randInt(seed, 0, KINDS.length - 1)];
-    for (var tries = 0; tries < 3 && k === prev; tries++){
-      seed += 101;
-      k = KINDS[randInt(seed, 0, KINDS.length - 1)];
-    }
+  const list = (CATEGORY === 'events' ? EVENTS : DEALS);
+  const KINDS = ['cabin','tavern','restaurant'];
+
+  // helper to avoid repeating the same kind twice in a row
+  function pickKind(prev){
+    let k;
+    do { k = rpick(KINDS); } while (k === prev && KINDS.length > 1);
     return k;
   }
 
-  var prevKind = null;
-  for (var i = 0; i < list.length; i++) {
-    var it   = list[i];
-    var seed = hashId(it.id).length + i * 31;
+  let x = xStart;
+  let prevKind = null;
 
-    var kind = pickKind(seed, prevKind);
+  for (let i = 0; i < list.length; i++){
+    const it = list[i];
+
+    // 4x3 tile footprint – drawing code handles PNG sizes
+    const w = 4 * TILE;
+    const h = 3 * TILE;
+
+    const kind = pickKind(prevKind);
     prevKind = kind;
-
-    // 4x3 tile footprint (used for alignment; PNGs are scaled inside draw)
-    var w = 4 * TILE, h = 3 * TILE;
 
     houses.push({
       id: it.id,
@@ -745,14 +763,14 @@ function buildHouses(){
       x: x,
       w: w,
       h: h,
-      kind: kind,
-      seed: seed
+      kind: kind
     });
 
-    x += gap + randInt(seed + 3, -10, 24);
+    x += rint(gapMin, gapMax);
   }
 
-  worldW = Math.max(256, (houses.length ? houses[houses.length - 1].x + 160 : 256));
+  // extend world width to fit the last house + margin
+  worldW = Math.max(256, houses.length ? (houses[houses.length - 1].x + 160) : 256);
 }
 
 function buildParallax(){
@@ -765,60 +783,84 @@ function buildParallax(){
 function buildPlatforms(){
   PLATFORMS = [];
 
-  // Max reachable jump height in pixels
-  var maxRise = (PHYS.jumpVel * PHYS.jumpVel) / (2 * PHYS.gravity); // ~98px
-  var safeRise = Math.floor(maxRise * 0.75); // keep 25% safety margin
-  var stepY = Math.max(48, Math.min(safeRise, 88)); // comfortable climb
+  // --- derive safe reach from your PHYS values ---
+  const vy0 = PHYS.jumpVel;                  // px/s
+  const g   = PHYS.gravity;                  // px/s^2
+  const tUp = vy0 / g;                       // time up
+  const tAir = 2 * tUp;                      // up + down
+  const horizSpeed = PHYS.walkSpeed * PHYS.runMultiplier * 0.95; // conservative
+  const maxHoriz = Math.max(80, Math.min(200, horizSpeed * tAir));
+  const maxRise  = (vy0 * vy0) / (2 * g);    // theoretical max climb
+  const stepY    = Math.round(Math.min(88, maxRise * 0.75));     // safe climb per step
 
-  // Start above houses
-  var firstY = GROUND_Y - 96;
-  var width  = 104;
+  // platform size + world bounds
+  const width  = 104;
+  const margin = 32;
 
-  // Horizontal bounds
-  var gapMin = 110;
-  var gapMax = 160;
+  // first platform: comfortably above ground and near the player
+  let x = rint(48, 120);
+  let y = GROUND_Y - rint(stepY - 6, stepY + 6);
 
-  // Generate 12–15 reachable ledges in a zigzag pattern
-  var x = 48;
-  var y = firstY;
-  var dir = 1;
-  for (var i = 0; i < 15; i++){
-    PLATFORMS.push({ x:x, y:y, w:width, h:16, row:i });
+  // how many to try to place
+  const count = 12 + rint(0, 4);
+  let dir = rpick([+1, -1]);  // start going left or right
 
-    // ensure next platform reachable both vertically & horizontally
-    var nextX = x + dir * randInt(i+99, gapMin, gapMax);
-    var nextY = y - randInt(i+33, stepY - 10, stepY + 10);
+  for (let i = 0; i < count; i++){
+    PLATFORMS.push({ x, y, w: width, h: 16, row: i });
 
-    // Flip direction when hitting world edge
-    if (nextX < 32) { nextX = 32; dir = 1; }
-    if (nextX + width > worldW - 32) { nextX = worldW - width - 32; dir = -1; }
+    // propose a next platform; resample until reachable
+    let tries = 0;
+    while (tries++ < 20){
+      const gapX = rint(Math.max(70, Math.floor(maxHoriz*0.45)),
+                        Math.min(160, Math.floor(maxHoriz*0.75)));
+      const nx = x + dir * gapX;
+      const ny = y - rint(stepY - 10, stepY + 10);
 
-    x = nextX;
-    y = nextY;
+      // keep inside world
+      const nxClamped = Math.max(margin, Math.min(worldW - width - margin, nx));
+
+      // compute reach from current to proposed
+      const dx = Math.abs((nxClamped + width/2) - (x + width/2));
+      const dy = Math.max(0, y - ny); // positive = going up
+
+      const reachable = (dx <= maxHoriz) && (dy <= stepY + 2);
+
+      if (reachable){
+        x = nxClamped;
+        y = ny;
+        break;
+      }
+
+      // flip direction if we bounced into a wall or repeatedly fail
+      if (tries % 6 === 0) dir *= -1;
+    }
+
+    // occasionally flip direction to zig-zag
+    if (r01() < 0.25) dir *= -1;
   }
 
-  // Clamp top scroll range
-  var minY = PLATFORMS.reduce((m, p) => Math.min(m, p.y), GROUND_Y);
-  WORLD_TOP = Math.min(-800, minY - 80);
+  // tighten vertical camera range based on platforms
+  const minY = PLATFORMS.reduce((m, p) => Math.min(m, p.y), GROUND_Y);
+  WORLD_TOP = Math.min(-800, Math.round(minY - 80));
   WORLD_BOTTOM = 0;
 }
 
 function placeHousesOnPlatforms(){
   if (!houses.length) return;
 
-  var hasPlatforms = PLATFORMS && PLATFORMS.length > 0;
-  var nextPlat = 0;
+  const hasPlatforms = PLATFORMS && PLATFORMS.length > 0;
+  let nextPlat = 0;
 
-  for (var i = 0; i < houses.length; i++){
-    var h = houses[i];
+  for (let i = 0; i < houses.length; i++){
+    const h = houses[i];
 
-    if (hasPlatforms && rand01(h.seed + 7) > 0.5){
-      var p = PLATFORMS[nextPlat % PLATFORMS.length];
+    if (hasPlatforms && r01() > 0.5){           // random each load
+      const p = PLATFORMS[nextPlat % PLATFORMS.length];
       nextPlat++;
-      h.baseY = p.y;           // ✅ sit ON the platform grass (feet line)
+      h.baseY = p.y;                            // sit ON platform grass (feet line)
       h.x = p.x + (p.w / 2);
     } else {
-      h.baseY = GROUND_Y;      // ✅ sit ON the ground grass (feet line)
+      h.baseY = GROUND_Y;                       // sit ON ground grass (feet line)
     }
   }
 }
@@ -1313,8 +1355,7 @@ function pixelText(s,x,y,color,maxWidth){
 
 /* ---------- UTILS ---------- */
 function hashId(s){ var h=0; for(var i=0;i<s.length;i++){ h=((h<<5)-h)+s.charCodeAt(i); h|=0; } return 'sb_'+Math.abs(h); }
-function rand01(seed){ var x=Math.sin(seed)*10000; return x - Math.floor(x); }
-function randInt(seed,min,max){ return Math.floor(rand01(seed)*(max-min+1))+min; }
+
 
 
 </script>
