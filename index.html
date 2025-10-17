@@ -1037,31 +1037,28 @@ function render(){
 function drawAbbeyBG(){
   if (!abbeyBGReady) return;
 
-  // Parallax factor (0 = glued to camera, 1 = moves with foreground)
-  var par = (ABBEY_BG.parallax == null ? 0.18 : ABBEY_BG.parallax);
+  const par = (ABBEY_BG.parallax == null ? 0.18 : ABBEY_BG.parallax);
 
-  // How far the background can drift while you pan across the world
-  var maxDrift = Math.max(0, (worldW - canvas.width) * par);
+  // How far the background is allowed to drift across the whole world
+  const maxDrift = Math.max(0, (worldW - canvas.width) * par);
 
-  // Make sure the image is wide enough to cover the canvas even at max drift
-  // (+2 is a tiny safety pad for rounding)
-  var minWidth = canvas.width + Math.ceil(maxDrift) + 2;
+  // Make the image wide enough to still cover the canvas at max drift
+  const minWidth  = canvas.width + Math.ceil(maxDrift) + 2; // +2 safety for rounding
+  const baseScale = ABBEY_BG.scale || 1;
+  const s         = Math.max(baseScale, minWidth / imgAbbeyBG.width);
 
-  // Choose a scale that’s at least your configured scale, but big enough to cover minWidth
-  var s = Math.max(ABBEY_BG.scale || 1, minWidth / imgAbbeyBG.width);
+  const w = Math.round(imgAbbeyBG.width  * s);
+  const h = Math.round(imgAbbeyBG.height * s);
 
-  var w = Math.round(imgAbbeyBG.width  * s);
-  var h = Math.round(imgAbbeyBG.height * s);
+  // LEFT-ANCHORED: at cameraX=0 the image’s left edge sits at x=0 (plus optional offset)
+  let x = Math.round(-cameraX * par + (ABBEY_BG.offsetX || 0));
 
-  // Center in screen space, then parallax drift
-  var x = Math.round((canvas.width - w) / 2 - cameraX * par + (ABBEY_BG.offsetX || 0));
-
-  // Optional clamp so no edge ever shows (keeps full coverage even if rounding bites)
+  // Clamp so neither edge ever shows, but only *after* you’ve used up the drift
+  // (allows full parallax, then "locks" at the extreme).
   x = Math.min(0, Math.max(canvas.width - w, x));
 
-  // Keep its feet on the ground line, then apply vertical nudge
-  var baseY = GROUND_Y + (ABBEY_BG.offsetY || 0);
-  var y = Math.round((baseY - h) - cameraY);
+  const baseY = GROUND_Y + (ABBEY_BG.offsetY || 0);
+  const y = Math.round((baseY - h) - cameraY);
 
   ctx.drawImage(imgAbbeyBG, x, y, w, h);
 }
