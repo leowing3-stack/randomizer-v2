@@ -1037,16 +1037,27 @@ function render(){
 function drawAbbeyBG(){
   if (!abbeyBGReady) return;
 
-  var s = ABBEY_BG.scale || 1;
+  // Parallax factor (0 = glued to camera, 1 = moves with foreground)
+  var par = (ABBEY_BG.parallax == null ? 0.18 : ABBEY_BG.parallax);
+
+  // How far the background can drift while you pan across the world
+  var maxDrift = Math.max(0, (worldW - canvas.width) * par);
+
+  // Make sure the image is wide enough to cover the canvas even at max drift
+  // (+2 is a tiny safety pad for rounding)
+  var minWidth = canvas.width + Math.ceil(maxDrift) + 2;
+
+  // Choose a scale that’s at least your configured scale, but big enough to cover minWidth
+  var s = Math.max(ABBEY_BG.scale || 1, minWidth / imgAbbeyBG.width);
+
   var w = Math.round(imgAbbeyBG.width  * s);
   var h = Math.round(imgAbbeyBG.height * s);
 
-  // Parallax (0 = fixed to camera, 1 = moves like foreground)
-  var par = (ABBEY_BG.parallax == null ? 0.18 : ABBEY_BG.parallax);
-
-  // ---- KEY CHANGE: center in SCREEN space, then apply a small parallax drift ----
-  // This guarantees the Abbey is visible at cameraX = 0.
+  // Center in screen space, then parallax drift
   var x = Math.round((canvas.width - w) / 2 - cameraX * par + (ABBEY_BG.offsetX || 0));
+
+  // Optional clamp so no edge ever shows (keeps full coverage even if rounding bites)
+  x = Math.min(0, Math.max(canvas.width - w, x));
 
   // Keep its feet on the ground line, then apply vertical nudge
   var baseY = GROUND_Y + (ABBEY_BG.offsetY || 0);
