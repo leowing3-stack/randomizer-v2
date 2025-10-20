@@ -272,36 +272,32 @@
 }
 @keyframes plaqueIn { to { transform: scale(1); } }
 
+/* background wood+paper image UNDER the canvas */
 .plaque-bg {
   position: absolute;
   inset: 0;
   background: url("./SocialBurstRandomizer/ui/plaque_board_paper.png") center / contain no-repeat;
   filter: drop-shadow(0 10px 26px rgba(0,0,0,.35));
   pointer-events: none;
+  z-index: 0;
 }
 
-/* Canvas text area — tuned for your current PNG proportions */
+/* canvas MUST be above the paper image */
 #plaqueCanvas {
   position: absolute;
-  left: 9%;   /* horizontal paper margin */
+  left: 9%;
   right: 9%;
-  top: 10%;   /* keep clear of top screws */
+  top: 10%;
   bottom: 14%;
   display: block;
   width: auto;
   height: auto;
   image-rendering: pixelated;
+  z-index: 1;
 }
 
-.plaque-actions {
-  position: absolute;
-  left: 10%;
-  right: 10%;
-  bottom: 5%;
-  display: flex;
-  gap: 10px;
-  justify-content: center;
-}
+/* hide the DOM buttons; we’re drawing pixel buttons on the canvas */
+.plaque-actions { display: none; }
 
 .plaque-close {
   position: absolute;
@@ -317,6 +313,7 @@
   font-size: 18px;
   cursor: pointer;
   box-shadow: 0 2px 0 rgba(0,0,0,.35);
+  z-index: 2; /* keep on top */
 }
 </style>
 <script>
@@ -1663,7 +1660,13 @@ plaqueCanvas.addEventListener('click', function(e){
     return;
   }
 });
-
+// Keep the pixels crisp if the window resizes while plaque is open
+window.addEventListener('resize', function(){
+  if (plaque.classList.contains('show') && currentOpen){
+    sizePlaqueCanvasForHiDPI();
+    plaqueHitAreas = drawPlaque(currentOpen.title, currentOpen.when, currentOpen.venue, currentOpen.description);
+  }
+});
 /* ---------- UTILS ---------- */
 function hashId(s){ var h=0; for(var i=0;i<s.length;i++){ h=((h<<5)-h)+s.charCodeAt(i); h|=0; } return 'sb_'+Math.abs(h); }
 
