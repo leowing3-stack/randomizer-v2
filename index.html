@@ -1509,60 +1509,60 @@ function drawPlaque(title, when, venue, desc){
   const W = plaqueCanvas.width;
   const H = plaqueCanvas.height;
 
-  // wipe
   ctx.clearRect(0, 0, W, H);
 
-  // layout constants (all in canvas pixels)
-  const sTitle = 3;           // scale for title glyphs
-  const sBody  = 2;           // scale for body glyphs
-  const padX   = 8 * sBody;   // left/right padding
-  const padY   = 6 * sBody;   // top padding
-  const gap    = 4 * sBody;   // vertical gap between lines
+  const sTitle = 3;
+  const sBody  = 2;
 
-  let x = padX, y = padY;
+  const lines = [];
 
-  // ---- Title (truncate) ----
-  const titleLine = String(title||'').toUpperCase().slice(0, 26);
-  pixelTextScaled(ctx, titleLine, x, y, 0x301873, sTitle);
-  y += 7 * sTitle + gap;
+  const titleLine = String(title || '').toUpperCase().slice(0, 26);
+  lines.push({ text: titleLine, scale: sTitle, color: 0x301873, gap: 7 * sTitle });
 
-  // ---- Meta lines ----
   const metaColor = 0x4b2a91;
   const meta1 = (when  || 'TODAY').toUpperCase();
   const meta2 = (venue || '').toUpperCase();
 
-  pixelTextScaled(ctx, meta1.slice(0, 30), x, y, metaColor, sBody);
-  y += 7 * sBody;
-  if (meta2){
-    pixelTextScaled(ctx, meta2.slice(0, 30), x, y, metaColor, sBody);
-    y += 7 * sBody;
-  }
-  y += gap;
+  lines.push({ text: meta1.slice(0, 30), scale: sBody, color: metaColor, gap: 6 * sBody });
+  if (meta2) lines.push({ text: meta2.slice(0, 30), scale: sBody, color: metaColor, gap: 6 * sBody });
 
-  // ---- Description (wrap) ----
-  //  At scale=2 the safe width is roughly (W - 2*padX) / ((3+1)*scale) characters
-  const approxChars = Math.max(10, Math.floor((W - 2*padX) / ((3+1)*sBody)));
-  const lines = wrapPixelLines(desc||'', approxChars);
-  for (let i=0; i<Math.min(lines.length, 6); i++){
-    pixelTextScaled(ctx, lines[i].toUpperCase(), x, y, 0x143C0D, sBody);
-    y += 6 * sBody;
+  const approxChars = Math.max(10, Math.floor((W - 16 * sBody) / ((3 + 1) * sBody)));
+  const wrapped = wrapPixelLines(desc || '', approxChars);
+  for (let i = 0; i < Math.min(wrapped.length, 5); i++) {
+    lines.push({ text: wrapped[i].toUpperCase(), scale: sBody, color: 0x143C0D, gap: 6 * sBody });
   }
 
-  // ---- Buttons at the bottom ----
-  const btnH = 16 * sBody;          // button height
-  const btnW = Math.min( Math.floor((W - padX*2 - 8*sBody)/2),  (W - padX*2) ); // two side-by-side
-  const by   = H - padY - btnH;     // bottom area
-  const b1x  = padX;
-  const b2x  = W - padX - btnW;
+  // ---- Buttons (size constants) ----
+  const btnH = 16 * sBody;
+  const btnW = Math.min(Math.floor((W - 16 * sBody - 8 * sBody) / 2), W - 16 * sBody);
 
-  // “OPEN LINK”
+  // --- Measure total text block height ---
+  let textHeight = 0;
+  lines.forEach(l => textHeight += l.gap);
+  const blockHeight = textHeight + btnH + 20 * sBody; // include buttons + margin
+
+  // --- Center the text block vertically ---
+  let y = Math.round((H - blockHeight) / 2);
+
+  // --- Draw text centered horizontally ---
+  lines.forEach(l => {
+    const textW = l.text.length * (3 + 1) * l.scale - l.scale;
+    const x = Math.round((W - textW) / 2);
+    pixelTextScaled(ctx, l.text, x, y, l.color, l.scale);
+    y += l.gap;
+  });
+
+  // --- Buttons centered at bottom ---
+  const by = H - btnH - 10 * sBody;
+  const b1x = Math.round((W / 2) - btnW - 4 * sBody);
+  const b2x = Math.round((W / 2) + 4 * sBody);
+
   drawPixelButton(ctx, b1x, by, btnW, btnH, 'OPEN LINK', sBody);
-  // “SAVE”
   drawPixelButton(ctx, b2x, by, btnW, btnH, 'SAVE', sBody);
 
   return {
-    open: { x:b1x, y:by, w:btnW, h:btnH },
-    save: { x:b2x, y:by, w:btnW, h:btnH }
+    open: { x: b1x, y: by, w: btnW, h: btnH },
+    save: { x: b2x, y: by, w: btnW, h: btnH }
   };
 }
 
