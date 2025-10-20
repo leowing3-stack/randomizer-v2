@@ -674,6 +674,38 @@ function getHouseDrawSize(h){
   return { w: 64, h: 48 };
 }
 
+// Stable enter rectangles around the house base.
+// Inner = when to activate; Outer = when to release (bigger → sticky).
+const ENTER = {
+  padXIn:  2,   // pixels inset from PNG edges to activate
+  padXOut: 8,   // larger margin to keep it active (hysteresis)
+  bandIn:  6,   // height of the Y band above the base to activate
+  bandOut: 10   // taller band to keep active
+};
+
+function getEnterRects(h){
+  const hb = getHouseHitbox(h);
+  // inner band (activate)
+  const inner = {
+    x1: hb.x1 + ENTER.padXIn,
+    x2: hb.x2 - ENTER.padXIn,
+    y1: hb.y2 - ENTER.bandIn,
+    y2: hb.y2
+  };
+  // outer band (release only after leaving this)
+  const outer = {
+    x1: hb.x1 - ENTER.padXOut,
+    x2: hb.x2 + ENTER.padXOut,
+    y1: hb.y2 - ENTER.bandOut,
+    y2: hb.y2 + 2 // tiny grace below base
+  };
+  return { inner, outer };
+}
+
+function pointInRect(px, py, r){
+  return px >= r.x1 && px <= r.x2 && py >= r.y1 && py <= r.y2;
+}
+
 function getHouseHitbox(h){
   const sz = getHouseDrawSize(h);
   const half = sz.w / 2;
@@ -1153,33 +1185,55 @@ if (cameraY > WORLD_BOTTOM) cameraY = WORLD_BOTTOM;
 
   parallax.treeX = cameraX * 0.5;
 
-// --- ENTER detection: inside full house PNG, only if sprite loaded ---
-var aligned = null;
-for (var i = 0; i < houses.length; i++){
-  var h = houses[i];
-  if (!isHouseSpriteReady(h)) continue;        // only when a PNG is really spawned/loaded
-
-  var hb = getHouseHitbox(h);                  // world-space bounds of the PNG
-  var insideX = (player.x >= hb.x1) && (player.x <= hb.x2);
-  var atBaseY = Math.abs(player.y - hb.y2) <= 2; // standing at its base line
-
-  if (insideX && atBaseY){
-    aligned = h;
-    break;
+// --- ENTER detection: sticky full-PNG band, only when sprite is loaded ---
+if (!UI_LOCK) {
+  // 1) Prefer to KEEP current target if we're still inside the *outer* band (hysteresis)
+  var keep = null;
+  if (canEnterId) {
+    for (var k = 0; k < houses.length; k++) {
+      var hk = houses[k];
+      if (hk.id !== canEnterId) continue;
+      if (!isHouseSpriteReady(hk)) break; // sprite vanished → drop
+      var rk = getEnterRects(hk).outer;
+      if (player.grounded && pointInRect(player.x, player.y, rk)) {
+        keep = hk;
+      }
+      break;
+    }
   }
-}
 
-if (aligned && player.grounded){
-  canEnterId = aligned.id;
-  hintEl.classList.add('show');                // show ↑ only when a house PNG is present
+  // 2) If we cannot keep, search for a new target using the *inner* band
+  var pick = keep;
+  if (!pick) {
+    for (var i = 0; i < houses.length; i++) {
+      var h = houses[i];
+      if (!isHouseSpriteReady(h)) continue;      // only real, loaded PNGs
+      var r = getEnterRects(h).inner;
+      if (player.grounded && pointInRect(player.x, player.y, r)) {
+        pick = h;
+        break;
+      }
+    }
+  }
+
+  // 3) Apply
+  if (pick) {
+    if (canEnterId !== pick.id) canEnterId = pick.id;
+    hintEl.classList.add('show');
+  } else {
+    canEnterId = null;
+    hintEl.classList.remove('show');
+  }
+
+  // 4) Action
+  if (keys.up && canEnterId) {
+    tryEnter();
+    keys.up = false;
+  }
 } else {
+  // UI locked (plaque open) → no hint, no enter
   canEnterId = null;
   hintEl.classList.remove('show');
-}
-
-if (keys.up && canEnterId){
-  tryEnter();
-  keys.up = false;
 }
 
 /* ================= RENDER ================= */
@@ -1245,13 +1299,7 @@ function drawAbbeyBG(){
   ctx.drawImage(imgAbbeyBG, x, y, w, h);
 }
 
-function doorXFor(h){
-  var half = h.w / 2;
-  if (h.kind === 'cabin')      return h.x - half + TILE * 1.5; // left-ish door
-  if (h.kind === 'tavern')     return h.x;                     // centered
-  if (h.kind === 'restaurant') return h.x + half - TILE * 1.5; // right-ish
-  return h.x;
-}
+
 
 function drawPlatforms(){
   for (var i = 0; i < PLATFORMS.length; i++){
