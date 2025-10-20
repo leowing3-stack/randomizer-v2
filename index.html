@@ -1004,23 +1004,87 @@ function buildPlatforms(){
 function placeHousesOnPlatforms(){
   if (!houses.length) return;
 
-  const hasPlatforms = PLATFORMS && PLATFORMS.length > 0;
-  let nextPlat = 0;
+  // Sort platforms by their creation row (the code that builds them sets p.row)
+  const platforms = (PLATFORMS || []).slice().sort(function(a,b){ return a.row - b.row; });
 
-  for (let i = 0; i < houses.length; i++){
-    const h = houses[i];
+  // If there are no platforms, keep everyone on ground (but still cap at 2 if you want)
+  if (!platforms.length){
+    var groundPlaced = 0;
+    for (var i = 0; i < houses.length; i++){
+      var h0 = houses[i];
+      if (groundPlaced < 2){
+        h0.baseY = GROUND_Y;
+        groundPlaced++;
+      } else {
+        // no platforms to place above; keep on ground anyway
+        h0.baseY = GROUND_Y;
+      }
+    }
+    return;
+  }
 
-    if (hasPlatforms && r01() > 0.5){           // random each load
-      const p = PLATFORMS[nextPlat % PLATFORMS.length];
-      nextPlat++;
-      h.baseY = p.y;                            // sit ON platform grass (feet line)
+  var used = new Set();     // platform indices we used for houses
+  var groundPlaced = 0;     // how many houses on the bottom level
+  var lastUsedIdx = -3;     // ensure first pick is >= 0+3 (and we’ll skip 0 anyway)
+
+  // Helper: can we place on platform index idx respecting "leave 2 platforms between"
+  function platformOK(idx){
+    if (idx <= 0) return false;                 // NEVER use the very first platform
+    if (used.has(idx)) return false;
+    var ok = true;
+    used.forEach(function(j){
+      if (Math.abs(j - idx) < 3) ok = false;    // need at least two empty platforms between
+    });
+    return ok;
+  }
+
+  for (var i = 0; i < houses.length; i++){
+    var h = houses[i];
+
+    // 1) Use ground until we’ve placed two houses there (max 2)
+    if (groundPlaced < 2){
+      h.baseY = GROUND_Y;
+      groundPlaced++;
+      continue;
+    }
+
+    // 2) Otherwise, find a platform index that is:
+    //    - not 0,
+    //    - at least 2 platforms away from any previously used,
+    //    - and >= lastUsedIdx + 3 (to keep them spaced as we go forward)
+    var startIdx = Math.max(1, lastUsedIdx + 3);  // skip platform[0], leave 2 between
+    var chosen = -1;
+
+    // Prefer a forward, spaced-out placement
+    for (var idx = startIdx; idx < platforms.length; idx++){
+      if (platformOK(idx)){ chosen = idx; break; }
+    }
+
+    // If none found ahead, try any eligible platform >=1 that meets the spacing rule
+    if (chosen === -1){
+      for (var idx2 = 1; idx2 < platforms.length; idx2++){
+        if (platformOK(idx2)){ chosen = idx2; break; }
+      }
+    }
+
+    // 3) Apply placement (fallback: if somehow none fit, keep on ground only if <2; else last platform)
+    if (chosen !== -1){
+      var p = platforms[chosen];
+      h.baseY = p.y;
       h.x = p.x + (p.w / 2);
+      used.add(chosen);
+      lastUsedIdx = chosen;
+    } else if (groundPlaced < 2){
+      h.baseY = GROUND_Y;
+      groundPlaced++;
     } else {
-      h.baseY = GROUND_Y;                       // sit ON ground grass (feet line)
+      // Absolute fallback to avoid dropping a house: put on the last platform (may violate spacing if extremely tight)
+      var plast = platforms[platforms.length - 1];
+      h.baseY = plast.y;
+      h.x = plast.x + (plast.w / 2);
     }
   }
 }
-
 
 /* ================= GAME LOOP ================= */
 /* PATCH START: dt loop + acceleration physics */
@@ -1296,7 +1360,10 @@ function drawAbbeyBG(){
   const baseY = GROUND_Y + (ABBEY_BG.offsetY || 0);
   const y = Math.round((baseY - h) - cameraY);
 
+    ctx.save();
+  ctx.globalAlpha = 0.65; // ↓ make the abbey less loud (0.0–1.0). Try 0.55–0.7 to taste.
   ctx.drawImage(imgAbbeyBG, x, y, w, h);
+  ctx.restore();
 }
 
 
