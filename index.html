@@ -969,17 +969,33 @@ function buildPlatforms(){
     while (tries++ < 20){
       const gapX = rint(Math.max(70, Math.floor(maxHoriz*0.45)),
                         Math.min(160, Math.floor(maxHoriz*0.75)));
-      const nx = x + dir * gapX;
+            const nx = x + dir * gapX;
       const ny = y - rint(stepY - 10, stepY + 10);
 
       // keep inside world
       const nxClamped = Math.max(margin, Math.min(worldW - width - margin, nx));
 
-      // compute reach from current to proposed
+      // compute reach from *current* to proposed
       const dx = Math.abs((nxClamped + width/2) - (x + width/2));
       const dy = Math.max(0, y - ny); // positive = going up
 
-      const reachable = (dx <= maxHoriz) && (dy <= stepY + 2);
+      // --- NEW: block a 3rd platform in the same vertical column ---
+      // Count how many platforms already occupy ~this X (within 24px of center).
+      function countAtX(cx){
+        let count = 0;
+        for (let jj = 0; jj < PLATFORMS.length; jj++){
+          const pj = PLATFORMS[jj];
+          const cj = pj.x + pj.w/2;
+          if (Math.abs(cj - cx) < 24) count++;
+        }
+        // Include the current platform (x,y) we are on in this iteration:
+        const ccur = x + width/2;
+        if (Math.abs(ccur - cx) < 24) count++;
+        return count;
+      }
+      const colOK = countAtX(nxClamped + width/2) < 2; // allow at most 2 per column
+
+      const reachable = (dx <= maxHoriz) && (dy <= stepY + 2) && colOK;
 
       if (reachable){
         x = nxClamped;
