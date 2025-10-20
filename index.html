@@ -1511,22 +1511,28 @@ function drawPlaque(title, when, venue, desc){
 
   ctx.clearRect(0, 0, W, H);
 
-  // -------- layout constants --------
-  const sTitle = 3;        // glyph scale for title
-  const sBody  = 2;        // glyph scale for body + buttons
-  const paperMarginPct = { x: 0.04, y: 0.06 }; // inner “safe” margin inside canvas (%)
-  const gapY = 4 * sBody;  // extra vertical spacing between blocks
-  const btnGap = 8 * sBody;
+  // === layout ===
+  const sTitle = 3;
+  const sBody  = 2;
 
-  // Define a PAPER rect we’ll center into (this is the key change)
+  // Paper "safe" rect inside the canvas (close to your PNG’s paper area)
+  // Asymmetrical on purpose to match the wood frame.
+  const M_LEFT   = 0.06;   // 6% left margin
+  const M_RIGHT  = 0.06;   // 6% right margin
+  const M_TOP    = 0.08;   // 8% top
+  const M_BOTTOM = 0.16;   // 16% bottom
+
   const paper = {
-    x: Math.round(W * paperMarginPct.x),
-    y: Math.round(H * paperMarginPct.y),
-    w: Math.round(W * (1 - 2 * paperMarginPct.x)),
-    h: Math.round(H * (1 - 2 * paperMarginPct.y))
+    x: Math.round(W * M_LEFT),
+    y: Math.round(H * M_TOP),
+    w: Math.round(W * (1 - M_LEFT - M_RIGHT)),
+    h: Math.round(H * (1 - M_TOP - M_BOTTOM))
   };
 
-  // -------- build lines --------
+  // << Key tweak: shift the visual center slightly right so it matches the plaque >>
+  const CENTER_BIAS = Math.round(W * 0.025); // ~2.5% of width → move right. Adjust ± if needed.
+
+  // Build lines
   const lines = [];
   const titleLine = String(title || '').toUpperCase().slice(0, 26);
   lines.push({ text: titleLine, scale: sTitle, color: 0x301873, lineH: 7*sTitle });
@@ -1534,43 +1540,51 @@ function drawPlaque(title, when, venue, desc){
   const metaColor = 0x4b2a91;
   const meta1 = (when  || 'TODAY').toUpperCase();
   const meta2 = (venue || '').toUpperCase();
-
   lines.push({ text: meta1.slice(0, 30), scale: sBody, color: metaColor, lineH: 6*sBody });
   if (meta2) lines.push({ text: meta2.slice(0, 30), scale: sBody, color: metaColor, lineH: 6*sBody });
 
-  // wrap description to the PAPER width (not full canvas)
   const approxChars = Math.max(10, Math.floor(paper.w / ((3+1)*sBody)));
   const wrapped = wrapPixelLines(desc || '', approxChars);
   for (let i=0; i<Math.min(wrapped.length, 6); i++){
     lines.push({ text: wrapped[i].toUpperCase(), scale: sBody, color: 0x143C0D, lineH: 6*sBody });
   }
 
-  // -------- measure block height (text only) --------
+  // Measure text block height
   let textHeight = 0;
-  lines.forEach(l => { textHeight += l.lineH; });
-  textHeight += gapY; // breathing room above buttons
+  lines.forEach(l => textHeight += l.lineH);
+  const gapY = 4 * sBody;
 
-  // -------- buttons sized/placed within PAPER --------
-  const btnH = 16 * sBody;
-  const btnW = Math.min(Math.floor((paper.w - btnGap) / 2), Math.floor(paper.w * 0.42));
-  const by   = paper.y + paper.h - btnH;         // sit on paper bottom
-  const b1x  = Math.round(paper.x + (paper.w - (btnW*2 + btnGap)) / 2);
-  const b2x  = b1x + btnW + btnGap;
+  // Buttons (centered on paper, also biased)
+  const btnGap = 8 * sBody;
+  const btnH   = 16 * sBody;
+  const btnW   = Math.min(Math.floor((paper.w - btnGap) / 2), Math.floor(paper.w * 0.42));
+  const by     = paper.y + paper.h + Math.round(H*M_BOTTOM) - btnH; // sit near the bottom paper edge
 
-  // Reduce available height for text by button stack
-  const contentHeight = textHeight + (paper.y + paper.h - by) + 2*sBody;
+  const groupW = btnW*2 + btnGap;
+  let b1x = Math.round(paper.x + (paper.w - groupW)/2 + CENTER_BIAS);
+  let b2x = b1x + btnW + btnGap;
 
-  // -------- vertical centering of the text block within PAPER --------
-  let y = Math.round(paper.y + (paper.h - (btnH + 2*sBody) - textHeight) / 2);
+  // Vertical centering of the text block within the paper area
+  let y = Math.round(paper.y + (paper.h - (btnH + gapY) - textHeight) / 2);
 
-  // -------- draw centered lines (center inside PAPER, not full canvas) --------
+  // Draw centered lines (with bias)
   lines.forEach(l => {
-    const charW = (3+1) * l.scale;                // glyph + gap
-    const textW = l.text.length * charW - l.scale; // last char no gap
-    const x = Math.round(paper.x + (paper.w - textW)/2);
+    const charW = (3+1) * l.scale;
+    const textW = l.text.length * charW - l.scale;
+    const x = Math.round(paper.x + (paper.w - textW)/2 + CENTER_BIAS);
     pixelTextScaled(ctx, l.text, x, y, l.color, l.scale);
     y += l.lineH;
   });
+
+  // Draw buttons
+  drawPixelButton(ctx, b1x, by, btnW, btnH, 'OPEN LINK', sBody);
+  drawPixelButton(ctx, b2x, by, btnW, btnH, 'SAVE',      sBody);
+
+  return {
+    open: { x:b1x, y:by, w:btnW, h:btnH },
+    save: { x:b2x, y:by, w:btnW, h:btnH }
+  };
+}
 
   // -------- draw buttons centered in PAPER --------
   drawPixelButton(ctx, b1x, by, btnW, btnH, 'OPEN LINK', sBody);
