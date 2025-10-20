@@ -1612,17 +1612,24 @@ function sizePlaqueCanvasForHiDPI() {
 }
 
 function openPlaque(item){
-  // Upscale canvas for crisp pixels, then draw
-  sizePlaqueCanvasForHiDPI();
-  plaqueHitAreas = drawPlaque(item.title, item.when, item.venue, item.description);
+  // keep the data accessible for button handlers
+  currentOpen = item;
 
-  // show
+  // 1) show FIRST so the element has a real size
   plaque.classList.add('show');
   plaque.style.display = 'flex';
   UI_LOCK = true;
 
-  // keep the data accessible for button handlers
-  currentOpen = item;
+  // 2) next frame: measure, scale for HiDPI, and draw the text/buttons
+  requestAnimationFrame(function(){
+    sizePlaqueCanvasForHiDPI();
+    plaqueHitAreas = drawPlaque(
+      item.title,
+      item.when,
+      item.venue,
+      item.description
+    );
+  });
 }
 
 function closePlaque(){
