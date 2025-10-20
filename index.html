@@ -873,12 +873,17 @@ function recomputeWorldBounds(){
     if (topY < minTop) minTop = topY;
   }
 
-  // Give a little margin above the tallest sprite
-  var margin = 24; // pixels of headroom
-  // Allow camera to scroll up to just above that top
-  WORLD_TOP = Math.min(WORLD_TOP, Math.round(minTop - margin));
-  // Bottom stays the ground area
-  WORLD_BOTTOM = 0;
+ // Give a little margin above the tallest sprite
+var margin = 24;
+
+// Also consider the highest platform
+var minPlatY = PLATFORMS.length
+  ? PLATFORMS.reduce((m, p) => Math.min(m, p.y), GROUND_Y)
+  : GROUND_Y;
+
+// Compute a fresh WORLD_TOP from *either* tallest building or highest platform
+WORLD_TOP = Math.round(Math.min(minTop - margin, minPlatY - 140));
+WORLD_BOTTOM = 0;
 }
 
 function buildScene(){
@@ -957,8 +962,10 @@ function buildPlatforms(){
   let x = rint(48, 120);
   let y = GROUND_Y - rint(stepY - 6, stepY + 6);
 
-  // how many to try to place
-  const count = 12 + rint(0, 4);
+ // how many to try to place — scale with number of items so deals can climb higher
+// assume max 2 on ground; rest need platforms, with ≥2 empty platforms between houses
+const platformHouses = Math.max(0, ITEMS.length - 2);
+const count = Math.max(20, platformHouses * 3); // plenty to space them out
   let dir = rpick([+1, -1]);  // start going left or right
 
   for (let i = 0; i < count; i++){
@@ -1012,44 +1019,49 @@ function buildPlatforms(){
   }
 
   // tighten vertical camera range based on platforms
-  const minY = PLATFORMS.reduce((m, p) => Math.min(m, p.y), GROUND_Y);
-  WORLD_TOP = Math.min(-800, Math.round(minY - 80));
-  WORLD_BOTTOM = 0;
+  // tighten vertical camera range based on platforms (no artificial ceiling)
+const minY = PLATFORMS.reduce((m, p) => Math.min(m, p.y), GROUND_Y);
+WORLD_TOP = Math.round(minY - 140);  // extra headroom so tall stacks fit
+WORLD_BOTTOM = 0;
 }
 
 function placeHousesOnPlatforms(){
   if (!houses.length) return;
 
-  // Sort platforms by their creation row (the code that builds them sets p.row)
+  // Sort platforms in creation order (lowest "row" first). We will:
+  // - place max 2 on ground,
+  // - skip platforms[0] (the first one you jump to),
+  // - then only place on platforms with ≥2 empty platforms between used ones.
   const platforms = (PLATFORMS || []).slice().sort(function(a,b){ return a.row - b.row; });
 
-  // If there are no platforms, keep everyone on ground (but still cap at 2 if you want)
+  // If there are no platforms, allow at most two on ground; hide the rest (no clumping).
   if (!platforms.length){
     var groundPlaced = 0;
     for (var i = 0; i < houses.length; i++){
-      var h0 = houses[i];
+      var h = houses[i];
       if (groundPlaced < 2){
-        h0.baseY = GROUND_Y;
+        h.baseY = GROUND_Y;
         groundPlaced++;
       } else {
-        // no platforms to place above; keep on ground anyway
-        h0.baseY = GROUND_Y;
+        // no platforms available; do not place more (keep them off-screen)
+        h.baseY = -99999; // effectively hidden if you want; or leave as-is
       }
     }
     return;
   }
 
-  var used = new Set();     // platform indices we used for houses
-  var groundPlaced = 0;     // how many houses on the bottom level
-  var lastUsedIdx = -3;     // ensure first pick is >= 0+3 (and we’ll skip 0 anyway)
+  var used = new Set();   // indices of platforms[] that already got a house
+  var groundPlaced = 0;
+  var lastUsedIdx = -3;   // so the first platform candidate must be ≥ 1 (and we skip 0 anyway)
 
-  // Helper: can we place on platform index idx respecting "leave 2 platforms between"
   function platformOK(idx){
-    if (idx <= 0) return false;                 // NEVER use the very first platform
+    if (idx <= 0) return false;        // NEVER use the very first platform
     if (used.has(idx)) return false;
+    // Need ≥2 EMPTY platforms between any two house platforms:
+    // i.e., index distance >= 3 from every used index.
     var ok = true;
     used.forEach(function(j){
-      if (Math.abs(j - idx) < 3) ok = false;    // need at least two empty platforms between
+      if (Math.abs(j - idx) < 3) ok = false;
     });
     return ok;
   }
@@ -1057,48 +1069,49 @@ function placeHousesOnPlatforms(){
   for (var i = 0; i < houses.length; i++){
     var h = houses[i];
 
-    // 1) Use ground until we’ve placed two houses there (max 2)
+    // 1) At most two on the ground
     if (groundPlaced < 2){
       h.baseY = GROUND_Y;
       groundPlaced++;
       continue;
     }
 
-    // 2) Otherwise, find a platform index that is:
-    //    - not 0,
-    //    - at least 2 platforms away from any previously used,
-    //    - and >= lastUsedIdx + 3 (to keep them spaced as we go forward)
-    var startIdx = Math.max(1, lastUsedIdx + 3);  // skip platform[0], leave 2 between
+    // 2) Find the next platform that keeps at least two empty platforms between houses.
+    var startIdx = Math.max(1, lastUsedIdx + 3); // skip 0, enforce spacing forward
     var chosen = -1;
 
-    // Prefer a forward, spaced-out placement
+    // Prefer forward placement to spread them out horizontally as generation intended
     for (var idx = startIdx; idx < platforms.length; idx++){
       if (platformOK(idx)){ chosen = idx; break; }
     }
 
-    // If none found ahead, try any eligible platform >=1 that meets the spacing rule
+    // If we couldn’t find one ahead, try from the end backwards (still respecting the rule)
     if (chosen === -1){
-      for (var idx2 = 1; idx2 < platforms.length; idx2++){
+      for (var idx2 = platforms.length - 1; idx2 >= 1; idx2--){
         if (platformOK(idx2)){ chosen = idx2; break; }
       }
     }
 
-    // 3) Apply placement (fallback: if somehow none fit, keep on ground only if <2; else last platform)
+    // 3) Apply placement STRICTLY on platforms (no ground fallback beyond the first two)
     if (chosen !== -1){
       var p = platforms[chosen];
       h.baseY = p.y;
       h.x = p.x + (p.w / 2);
       used.add(chosen);
       lastUsedIdx = chosen;
-    } else if (groundPlaced < 2){
-      h.baseY = GROUND_Y;
-      groundPlaced++;
     } else {
-      // Absolute fallback to avoid dropping a house: put on the last platform (may violate spacing if extremely tight)
-      var plast = platforms[platforms.length - 1];
-      h.baseY = plast.y;
-      h.x = plast.x + (plast.w / 2);
+      // Strict rule: if there truly isn't a legal platform left, don't violate spacing.
+      // Keep the house off-screen instead of dumping it on the ground or crowding a platform.
+      h.baseY = -99999; // effectively hidden; with your scaled platform count, this shouldn't trigger
     }
+  }
+
+  // Keep world wide enough for the last placed house
+  if (houses.length){
+    var lastPlacedX = houses.reduce(function(mx, h){
+      return Math.max(mx, h.x || 0);
+    }, 0);
+    worldW = Math.max(worldW, lastPlacedX + 160);
   }
 }
 
