@@ -1511,58 +1511,74 @@ function drawPlaque(title, when, venue, desc){
 
   ctx.clearRect(0, 0, W, H);
 
-  const sTitle = 3;
-  const sBody  = 2;
+  // -------- layout constants --------
+  const sTitle = 3;        // glyph scale for title
+  const sBody  = 2;        // glyph scale for body + buttons
+  const paperMarginPct = { x: 0.04, y: 0.06 }; // inner “safe” margin inside canvas (%)
+  const gapY = 4 * sBody;  // extra vertical spacing between blocks
+  const btnGap = 8 * sBody;
 
+  // Define a PAPER rect we’ll center into (this is the key change)
+  const paper = {
+    x: Math.round(W * paperMarginPct.x),
+    y: Math.round(H * paperMarginPct.y),
+    w: Math.round(W * (1 - 2 * paperMarginPct.x)),
+    h: Math.round(H * (1 - 2 * paperMarginPct.y))
+  };
+
+  // -------- build lines --------
   const lines = [];
-
   const titleLine = String(title || '').toUpperCase().slice(0, 26);
-  lines.push({ text: titleLine, scale: sTitle, color: 0x301873, gap: 7 * sTitle });
+  lines.push({ text: titleLine, scale: sTitle, color: 0x301873, lineH: 7*sTitle });
 
   const metaColor = 0x4b2a91;
   const meta1 = (when  || 'TODAY').toUpperCase();
   const meta2 = (venue || '').toUpperCase();
 
-  lines.push({ text: meta1.slice(0, 30), scale: sBody, color: metaColor, gap: 6 * sBody });
-  if (meta2) lines.push({ text: meta2.slice(0, 30), scale: sBody, color: metaColor, gap: 6 * sBody });
+  lines.push({ text: meta1.slice(0, 30), scale: sBody, color: metaColor, lineH: 6*sBody });
+  if (meta2) lines.push({ text: meta2.slice(0, 30), scale: sBody, color: metaColor, lineH: 6*sBody });
 
-  const approxChars = Math.max(10, Math.floor((W - 16 * sBody) / ((3 + 1) * sBody)));
+  // wrap description to the PAPER width (not full canvas)
+  const approxChars = Math.max(10, Math.floor(paper.w / ((3+1)*sBody)));
   const wrapped = wrapPixelLines(desc || '', approxChars);
-  for (let i = 0; i < Math.min(wrapped.length, 5); i++) {
-    lines.push({ text: wrapped[i].toUpperCase(), scale: sBody, color: 0x143C0D, gap: 6 * sBody });
+  for (let i=0; i<Math.min(wrapped.length, 6); i++){
+    lines.push({ text: wrapped[i].toUpperCase(), scale: sBody, color: 0x143C0D, lineH: 6*sBody });
   }
 
-  // ---- Buttons (size constants) ----
-  const btnH = 16 * sBody;
-  const btnW = Math.min(Math.floor((W - 16 * sBody - 8 * sBody) / 2), W - 16 * sBody);
-
-  // --- Measure total text block height ---
+  // -------- measure block height (text only) --------
   let textHeight = 0;
-  lines.forEach(l => textHeight += l.gap);
-  const blockHeight = textHeight + btnH + 20 * sBody; // include buttons + margin
+  lines.forEach(l => { textHeight += l.lineH; });
+  textHeight += gapY; // breathing room above buttons
 
-  // --- Center the text block vertically ---
-  let y = Math.round((H - blockHeight) / 2);
+  // -------- buttons sized/placed within PAPER --------
+  const btnH = 16 * sBody;
+  const btnW = Math.min(Math.floor((paper.w - btnGap) / 2), Math.floor(paper.w * 0.42));
+  const by   = paper.y + paper.h - btnH;         // sit on paper bottom
+  const b1x  = Math.round(paper.x + (paper.w - (btnW*2 + btnGap)) / 2);
+  const b2x  = b1x + btnW + btnGap;
 
-  // --- Draw text centered horizontally ---
+  // Reduce available height for text by button stack
+  const contentHeight = textHeight + (paper.y + paper.h - by) + 2*sBody;
+
+  // -------- vertical centering of the text block within PAPER --------
+  let y = Math.round(paper.y + (paper.h - (btnH + 2*sBody) - textHeight) / 2);
+
+  // -------- draw centered lines (center inside PAPER, not full canvas) --------
   lines.forEach(l => {
-    const textW = l.text.length * (3 + 1) * l.scale - l.scale;
-    const x = Math.round((W - textW) / 2);
+    const charW = (3+1) * l.scale;                // glyph + gap
+    const textW = l.text.length * charW - l.scale; // last char no gap
+    const x = Math.round(paper.x + (paper.w - textW)/2);
     pixelTextScaled(ctx, l.text, x, y, l.color, l.scale);
-    y += l.gap;
+    y += l.lineH;
   });
 
-  // --- Buttons centered at bottom ---
-  const by = H - btnH - 10 * sBody;
-  const b1x = Math.round((W / 2) - btnW - 4 * sBody);
-  const b2x = Math.round((W / 2) + 4 * sBody);
-
+  // -------- draw buttons centered in PAPER --------
   drawPixelButton(ctx, b1x, by, btnW, btnH, 'OPEN LINK', sBody);
-  drawPixelButton(ctx, b2x, by, btnW, btnH, 'SAVE', sBody);
+  drawPixelButton(ctx, b2x, by, btnW, btnH, 'SAVE',      sBody);
 
   return {
-    open: { x: b1x, y: by, w: btnW, h: btnH },
-    save: { x: b2x, y: by, w: btnW, h: btnH }
+    open: { x:b1x, y:by, w:btnW, h:btnH },
+    save: { x:b2x, y:by, w:btnW, h:btnH }
   };
 }
 
