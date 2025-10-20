@@ -1586,15 +1586,6 @@ function drawPlaque(title, when, venue, desc){
   };
 }
 
-  // -------- draw buttons centered in PAPER --------
-  drawPixelButton(ctx, b1x, by, btnW, btnH, 'OPEN LINK', sBody);
-  drawPixelButton(ctx, b2x, by, btnW, btnH, 'SAVE',      sBody);
-
-  return {
-    open: { x:b1x, y:by, w:btnW, h:btnH },
-    save: { x:b2x, y:by, w:btnW, h:btnH }
-  };
-}
 
 function drawPlaqueText(title, when, venue, desc){
   // Clear to transparent; paper sits underneath via CSS
