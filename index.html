@@ -656,6 +656,31 @@ var imgRestaurant = new Image();
 var restaurantReady = false;
 imgRestaurant.onload = function(){ restaurantReady = true; };
 imgRestaurant.src = './SocialBurstRandomizer/sprites/buildings/restaurant.png';
+
+// ===== House sprite helpers =====
+function isHouseSpriteReady(h){
+  if (h.kind === 'cabin')      return cabinReady;
+  if (h.kind === 'tavern')     return tavernReady;
+  if (h.kind === 'restaurant') return restaurantReady;
+  return false;
+}
+
+function getHouseDrawSize(h){
+  const s = 0.85; // must match drawBuilding scale
+  if (h.kind === 'cabin' && cabinReady)           return { w: Math.round(imgCabin.width * s),      h: Math.round(imgCabin.height * s) };
+  if (h.kind === 'tavern' && tavernReady)         return { w: Math.round(imgTavern.width * s),     h: Math.round(imgTavern.height * s) };
+  if (h.kind === 'restaurant' && restaurantReady) return { w: Math.round(imgRestaurant.width * s), h: Math.round(imgRestaurant.height * s) };
+  // fallback to 4x3 tiles footprint if not ready
+  return { w: 64, h: 48 };
+}
+
+function getHouseHitbox(h){
+  const sz = getHouseDrawSize(h);
+  const half = sz.w / 2;
+  const yBottom = (typeof h.baseY === 'number') ? h.baseY : GROUND_Y;
+  return { x1: h.x - half, x2: h.x + half, y1: yBottom - sz.h, y2: yBottom };
+}
+
 /* === GRASS + DIRT TILES (16x16, side-view) === */
 var imgGrass = new Image(), grassReady = false;
 imgGrass.onload = function(){ grassReady = true; };
@@ -773,15 +798,27 @@ function fallback(){
 
 /* ================= WORLD GEN ================= */
 function setCategory(kind){
-  CATEGORY=(kind==='deals')?'deals':'events';
-  tabEvents.setAttribute('aria-pressed', String(CATEGORY==='events'));
-  tabDeals.setAttribute('aria-pressed',  String(CATEGORY==='deals'));
+  CATEGORY = (kind === 'deals') ? 'deals' : 'events';
+  tabEvents.setAttribute('aria-pressed',  String(CATEGORY==='events'));
+  tabDeals.setAttribute('aria-pressed',   String(CATEGORY==='deals'));
   tabEvents.setAttribute('aria-selected', String(CATEGORY==='events'));
   tabDeals.setAttribute('aria-selected',  String(CATEGORY==='deals'));
 
-  ITEMS=(CATEGORY==='events'?EVENTS:DEALS).slice();
+  // Ensure one house per unique event id (no duplicates)
+  const source = (CATEGORY === 'events' ? EVENTS : DEALS);
+  const seen = Object.create(null);
+  ITEMS = source.filter(function(it){
+    if (!it || !it.id) return false;
+    if (seen[it.id]) return false;
+    seen[it.id] = 1;
+    return true;
+  });
+
   buildScene();
-  player.x=16; cameraX=0; cameraY=0; canEnterId=null;
+  player.x = 16;
+  cameraX = 0;
+  cameraY = 0;
+  canEnterId = null;
 }
 
 // Height helper: works whether you use the PNG cabin or the tiles
@@ -1116,19 +1153,33 @@ if (cameraY > WORLD_BOTTOM) cameraY = WORLD_BOTTOM;
 
   parallax.treeX = cameraX * 0.5;
 
-  // --- ENTER detection unchanged ---
-  var aligned = null;
-  for (var i=0;i<houses.length;i++){
-    var door = doorXFor(houses[i]);
-    if (Math.abs(door - player.x) < 8){ aligned = houses[i]; break; }
-  }
-  if (aligned && player.grounded){ // only show hint when on ground
-    canEnterId = aligned.id; hintEl.classList.add('show');
-  } else {
-    canEnterId = null; hintEl.classList.remove('show');
-  }
+// --- ENTER detection: inside full house PNG, only if sprite loaded ---
+var aligned = null;
+for (var i = 0; i < houses.length; i++){
+  var h = houses[i];
+  if (!isHouseSpriteReady(h)) continue;        // only when a PNG is really spawned/loaded
 
-  if (keys.up && canEnterId){ tryEnter(); keys.up = false; }
+  var hb = getHouseHitbox(h);                  // world-space bounds of the PNG
+  var insideX = (player.x >= hb.x1) && (player.x <= hb.x2);
+  var atBaseY = Math.abs(player.y - hb.y2) <= 2; // standing at its base line
+
+  if (insideX && atBaseY){
+    aligned = h;
+    break;
+  }
+}
+
+if (aligned && player.grounded){
+  canEnterId = aligned.id;
+  hintEl.classList.add('show');                // show ↑ only when a house PNG is present
+} else {
+  canEnterId = null;
+  hintEl.classList.remove('show');
+}
+
+if (keys.up && canEnterId){
+  tryEnter();
+  keys.up = false;
 }
 
 /* ================= RENDER ================= */
