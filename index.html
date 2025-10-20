@@ -282,18 +282,15 @@
   z-index: 0;
 }
 
-/* canvas MUST be above the paper image */
-#plaqueCanvas {
-  position: absolute;
-  left: 9%;
-  right: 9%;
-  top: 10%;
-  bottom: 14%;
-  display: block;
-  width: auto;
-  height: auto;
-  image-rendering: pixelated;
-  z-index: 1;
+
+#plaqueCanvas{
+  position:absolute;
+  inset:0;             /* left:0; right:0; top:0; bottom:0 */
+  width:100%;
+  height:100%;
+  display:block;
+  image-rendering:pixelated;
+  z-index:1;
 }
 
 /* hide the DOM buttons; we’re drawing pixel buttons on the canvas */
@@ -1511,52 +1508,56 @@ function drawPlaque(title, when, venue, desc){
 
   ctx.clearRect(0, 0, W, H);
 
-  // Scales and spacing
+  // center of the PLAQUE (not a paper rect)
+  const cx = Math.round(W / 2);
+  const cy = Math.round(H / 2);
+
+  // font scales + spacing
   const sTitle = 3;
   const sBody  = 2;
-  const gapY   = 4 * sBody;   // gap between lines
+  const gapY   = 4 * sBody;
 
-  // Build the lines we’ll render
+  // build lines (monospace 3x5 font)
   const lines = [];
-  lines.push({ text: String(title||'').toUpperCase().slice(0, 32), scale: sTitle, color: 0x301873, lineH: 7*sTitle });
+  lines.push({ text:String(title||'').toUpperCase().slice(0, 40), scale:sTitle, color:0x301873, lineH:7*sTitle });
 
   const metaColor = 0x4b2a91;
-  if (when)  lines.push({ text: String(when ).toUpperCase().slice(0, 40), scale: sBody, color: metaColor, lineH: 6*sBody });
-  if (venue) lines.push({ text: String(venue).toUpperCase().slice(0, 40), scale: sBody, color: metaColor, lineH: 6*sBody });
+  if (when)  lines.push({ text:String(when ).toUpperCase().slice(0, 44), scale:sBody, color:metaColor, lineH:6*sBody });
+  if (venue) lines.push({ text:String(venue).toUpperCase().slice(0, 44), scale:sBody, color:metaColor, lineH:6*sBody });
 
   const approxChars = Math.max(10, Math.floor(W / ((3+1)*sBody)));
-  (wrapPixelLines(desc||'', approxChars).slice(0, 6)).forEach(t => {
-    lines.push({ text: t.toUpperCase(), scale: sBody, color: 0x143C0D, lineH: 6*sBody });
+  wrapPixelLines(desc||'', approxChars).slice(0, 6).forEach(t => {
+    lines.push({ text:t.toUpperCase(), scale:sBody, color:0x143C0D, lineH:6*sBody });
   });
 
-  // Measure total block height (lines + gaps)
+  // measure block size (height; width per-line when drawing)
   let blockH = 0;
-  for (let i = 0; i < lines.length; i++){
+  for (let i=0;i<lines.length;i++){
     blockH += lines[i].lineH;
     if (i < lines.length - 1) blockH += gapY;
   }
 
-  // Vertically center the whole block in the canvas (which already sits over the paper)
-  let y = Math.round((H - blockH) / 2);
+  // start Y so the block is vertically centered around cy
+  let y = Math.round(cy - blockH / 2);
 
-  // Draw each line centered horizontally
-  for (let i = 0; i < lines.length; i++){
+  // draw each line horizontally centered around cx
+  for (let i=0;i<lines.length;i++){
     const l = lines[i];
     const charW = (3 + 1) * l.scale;             // glyph + gap
     const textW = l.text.length * charW - l.scale; // no trailing gap on last char
-    const x = Math.round((W - textW) / 2);       // <-- exact horizontal center
+    const x = Math.round(cx - textW / 2);        // <-- exact center horizontally
     pixelTextScaled(ctx, l.text, x, y, l.color, l.scale);
     y += l.lineH + (i < lines.length - 1 ? gapY : 0);
   }
 
-  // Pixel buttons centered at bottom (inside canvas)
+  // draw pixel buttons centered at the bottom (do NOT affect centering)
   const btnH   = 16 * sBody;
   const btnGap = 8  * sBody;
   const btnW   = Math.min(Math.floor((W - btnGap) / 2), Math.floor(W * 0.42));
-  const by     = H - (8 * sBody) - btnH;
-  const groupW = btnW*2 + btnGap;
-  const b1x    = Math.round((W - groupW) / 2);
+  const groupW = btnW * 2 + btnGap;
+  const b1x    = Math.round(cx - groupW / 2);
   const b2x    = b1x + btnW + btnGap;
+  const by     = H - (8 * sBody) - btnH;
 
   drawPixelButton(ctx, b1x, by, btnW, btnH, 'OPEN LINK', sBody);
   drawPixelButton(ctx, b2x, by, btnW, btnH, 'SAVE',      sBody);
@@ -1566,7 +1567,6 @@ function drawPlaque(title, when, venue, desc){
     save: { x:b2x, y:by, w:btnW, h:btnH }
   };
 }
-
 
 function drawPlaqueText(title, when, venue, desc){
   // Clear to transparent; paper sits underneath via CSS
