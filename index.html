@@ -1509,61 +1509,63 @@ function drawPlaque(title, when, venue, desc){
   const W = plaqueCanvas.width;
   const H = plaqueCanvas.height;
 
-  // clear
   ctx.clearRect(0, 0, W, H);
 
-  // font scales
-  const sTitle = 3;   // title size
-  const sBody  = 2;   // body size
+  // Scales and spacing
+  const sTitle = 3;
+  const sBody  = 2;
+  const gapY   = 4 * sBody;   // gap between lines
 
-  // build lines
+  // Build the lines we’ll render
   const lines = [];
-  const titleLine = String(title || '').toUpperCase().slice(0, 26);
-  lines.push({ text: titleLine, scale: sTitle, color: 0x301873, lineH: 7 * sTitle });
+  lines.push({ text: String(title||'').toUpperCase().slice(0, 32), scale: sTitle, color: 0x301873, lineH: 7*sTitle });
 
   const metaColor = 0x4b2a91;
-  const meta1 = (when  || 'TODAY').toUpperCase();
-  const meta2 = (venue || '').toUpperCase();
-  lines.push({ text: meta1.slice(0, 30), scale: sBody, color: metaColor, lineH: 6 * sBody });
-  if (meta2) lines.push({ text: meta2.slice(0, 30), scale: sBody, color: metaColor, lineH: 6 * sBody });
+  if (when)  lines.push({ text: String(when ).toUpperCase().slice(0, 40), scale: sBody, color: metaColor, lineH: 6*sBody });
+  if (venue) lines.push({ text: String(venue).toUpperCase().slice(0, 40), scale: sBody, color: metaColor, lineH: 6*sBody });
 
-  const approxChars = Math.max(10, Math.floor(W / ((3 + 1) * sBody)));
-  const wrapped = wrapPixelLines(desc || '', approxChars);
-  for (let i = 0; i < Math.min(wrapped.length, 6); i++){
-    lines.push({ text: wrapped[i].toUpperCase(), scale: sBody, color: 0x143C0D, lineH: 6 * sBody });
+  const approxChars = Math.max(10, Math.floor(W / ((3+1)*sBody)));
+  (wrapPixelLines(desc||'', approxChars).slice(0, 6)).forEach(t => {
+    lines.push({ text: t.toUpperCase(), scale: sBody, color: 0x143C0D, lineH: 6*sBody });
+  });
+
+  // Measure total block height (lines + gaps)
+  let blockH = 0;
+  for (let i = 0; i < lines.length; i++){
+    blockH += lines[i].lineH;
+    if (i < lines.length - 1) blockH += gapY;
   }
 
-  // measure text block
-  let textHeight = 0;
-  for (let i = 0; i < lines.length; i++) textHeight += lines[i].lineH;
-
-  // buttons
-  const btnGap = 8 * sBody;
-  const btnH   = 16 * sBody;
-  const btnW   = Math.min(Math.floor((W - btnGap) / 2), Math.floor(W * 0.42));
-  const groupW = btnW * 2 + btnGap;
-
-  // place buttons centered horizontally, a little above the canvas bottom
-  const bottomPad = Math.round(H * 0.08);
-  const by = H - bottomPad - btnH;
-  const b1x = Math.round((W - groupW) / 2);
-  const b2x = b1x + btnW + btnGap;
-
-  // vertical centering: center the whole content block (text + small gap + buttons)
-  const gapY = 4 * sBody;
-  const blockH = textHeight + gapY + btnH;
+  // Vertically center the whole block in the canvas (which already sits over the paper)
   let y = Math.round((H - blockH) / 2);
 
-  // draw centered text lines
+  // Draw each line centered horizontally
   for (let i = 0; i < lines.length; i++){
     const l = lines[i];
-    const charW = (3 + 1) * l.scale;           // glyph + gap
-    const textW = l.text.length * charW - l.scale; // last char no trailing gap
-    const x = Math.round((W - textW) / 2);      // **exact horizontal center**
+    const charW = (3 + 1) * l.scale;             // glyph + gap
+    const textW = l.text.length * charW - l.scale; // no trailing gap on last char
+    const x = Math.round((W - textW) / 2);       // <-- exact horizontal center
     pixelTextScaled(ctx, l.text, x, y, l.color, l.scale);
-    y += l.lineH;
+    y += l.lineH + (i < lines.length - 1 ? gapY : 0);
   }
 
+  // Pixel buttons centered at bottom (inside canvas)
+  const btnH   = 16 * sBody;
+  const btnGap = 8  * sBody;
+  const btnW   = Math.min(Math.floor((W - btnGap) / 2), Math.floor(W * 0.42));
+  const by     = H - (8 * sBody) - btnH;
+  const groupW = btnW*2 + btnGap;
+  const b1x    = Math.round((W - groupW) / 2);
+  const b2x    = b1x + btnW + btnGap;
+
+  drawPixelButton(ctx, b1x, by, btnW, btnH, 'OPEN LINK', sBody);
+  drawPixelButton(ctx, b2x, by, btnW, btnH, 'SAVE',      sBody);
+
+  return {
+    open: { x:b1x, y:by, w:btnW, h:btnH },
+    save: { x:b2x, y:by, w:btnW, h:btnH }
+  };
+}
   // small gap before buttons
   y += gapY;
 
