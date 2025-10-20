@@ -1481,6 +1481,94 @@ function wrapPixelLines(text, maxChars){
   return lines;
 }
 
+/* ---------------- PIXEL PLAQUE RENDERING + BUTTONS ---------------- */
+
+var plaqueHitAreas = null;   // { open:{x,y,w,h}, save:{x,y,w,h} } in canvas pixels
+
+function pxFill(ctx, x, y, w, h, hex){
+  ctx.fillStyle = '#' + hex.toString(16).padStart(6,'0');
+  ctx.fillRect(x|0, y|0, w|0, h|0);
+}
+
+function drawPixelButton(ctx, x, y, w, h, label, scale){
+  // frame (dark border + light face)
+  pxFill(ctx, x,     y,     w,   h,   0x2b1a4f); // dark border
+  pxFill(ctx, x+scale, y+scale, w-2*scale, h-2*scale, 0xf5e86b); // face
+
+  // label centered (3x5 font scaled)
+  var charW = (3+1) * scale; // 3px glyph + 1px gap
+  var textW = label.length * charW - scale; // last char doesn't add gap
+  var tx = Math.round(x + (w - textW)/2);
+  var ty = Math.round(y + (h - 5*scale)/2);
+  pixelTextScaled(ctx, label, tx, ty, 0x2b1a4f, scale);
+}
+
+/**
+ * Draw all text onto the plaque canvas and return button hit areas.
+ * Canvas is already sized for HiDPI by sizePlaqueCanvasForHiDPI().
+ */
+function drawPlaque(title, when, venue, desc){
+  const ctx = plaqueCtx;
+  const W = plaqueCanvas.width;
+  const H = plaqueCanvas.height;
+
+  // wipe
+  ctx.clearRect(0, 0, W, H);
+
+  // layout constants (all in canvas pixels)
+  const sTitle = 3;           // scale for title glyphs
+  const sBody  = 2;           // scale for body glyphs
+  const padX   = 8 * sBody;   // left/right padding
+  const padY   = 6 * sBody;   // top padding
+  const gap    = 4 * sBody;   // vertical gap between lines
+
+  let x = padX, y = padY;
+
+  // ---- Title (truncate) ----
+  const titleLine = String(title||'').toUpperCase().slice(0, 26);
+  pixelTextScaled(ctx, titleLine, x, y, 0x301873, sTitle);
+  y += 7 * sTitle + gap;
+
+  // ---- Meta lines ----
+  const metaColor = 0x4b2a91;
+  const meta1 = (when  || 'TODAY').toUpperCase();
+  const meta2 = (venue || '').toUpperCase();
+
+  pixelTextScaled(ctx, meta1.slice(0, 30), x, y, metaColor, sBody);
+  y += 7 * sBody;
+  if (meta2){
+    pixelTextScaled(ctx, meta2.slice(0, 30), x, y, metaColor, sBody);
+    y += 7 * sBody;
+  }
+  y += gap;
+
+  // ---- Description (wrap) ----
+  //  At scale=2 the safe width is roughly (W - 2*padX) / ((3+1)*scale) characters
+  const approxChars = Math.max(10, Math.floor((W - 2*padX) / ((3+1)*sBody)));
+  const lines = wrapPixelLines(desc||'', approxChars);
+  for (let i=0; i<Math.min(lines.length, 6); i++){
+    pixelTextScaled(ctx, lines[i].toUpperCase(), x, y, 0x143C0D, sBody);
+    y += 6 * sBody;
+  }
+
+  // ---- Buttons at the bottom ----
+  const btnH = 16 * sBody;          // button height
+  const btnW = Math.min( Math.floor((W - padX*2 - 8*sBody)/2),  (W - padX*2) ); // two side-by-side
+  const by   = H - padY - btnH;     // bottom area
+  const b1x  = padX;
+  const b2x  = W - padX - btnW;
+
+  // “OPEN LINK”
+  drawPixelButton(ctx, b1x, by, btnW, btnH, 'OPEN LINK', sBody);
+  // “SAVE”
+  drawPixelButton(ctx, b2x, by, btnW, btnH, 'SAVE', sBody);
+
+  return {
+    open: { x:b1x, y:by, w:btnW, h:btnH },
+    save: { x:b2x, y:by, w:btnW, h:btnH }
+  };
+}
+
 function drawPlaqueText(title, when, venue, desc){
   // Clear to transparent; paper sits underneath via CSS
   plaqueCtx.clearRect(0,0,plaqueCanvas.width, plaqueCanvas.height);
@@ -1527,16 +1615,17 @@ function sizePlaqueCanvasForHiDPI() {
 }
 
 function openPlaque(item){
-    sizePlaqueCanvasForHiDPI();   // ensure sharp pixel text
-  drawPlaqueText(item.title, item.when, item.venue, item.description);
-  // Wire actions
-  if (item.link){ plaqueLink.href = item.link; plaqueLink.style.display='inline-flex'; }
-  else { plaqueLink.removeAttribute('href'); plaqueLink.style.display='none'; }
+  // Upscale canvas for crisp pixels, then draw
+  sizePlaqueCanvasForHiDPI();
+  plaqueHitAreas = drawPlaque(item.title, item.when, item.venue, item.description);
 
-  plaqueSave.onclick = function(){ if(item) saveItem(item); };
+  // show
   plaque.classList.add('show');
   plaque.style.display = 'flex';
   UI_LOCK = true;
+
+  // keep the data accessible for button handlers
+  currentOpen = item;
 }
 
 function closePlaque(){
@@ -1548,6 +1637,31 @@ function closePlaque(){
 plaqueClose.addEventListener('click', closePlaque);
 plaque.addEventListener('click', function(e){
   if (e.target === plaque) closePlaque(); // click outside to close
+});
+// === Pixel button hit-testing on the plaque canvas ===
+function pointIn(r, x, y){
+  return x >= r.x && y >= r.y && x <= r.x + r.w && y <= r.y + r.h;
+}
+
+plaqueCanvas.addEventListener('click', function(e){
+  if (!plaqueHitAreas) return;
+
+  const rect = plaqueCanvas.getBoundingClientRect();
+  const dpr  = Math.max(1, Math.floor(window.devicePixelRatio || 1));
+  const x = (e.clientX - rect.left) * dpr;
+  const y = (e.clientY - rect.top)  * dpr;
+
+  if (pointIn(plaqueHitAreas.open, x, y)){
+    if (currentOpen && currentOpen.link){
+      window.open(currentOpen.link, '_blank', 'noopener');
+    }
+    return;
+  }
+
+  if (pointIn(plaqueHitAreas.save, x, y)){
+    if (currentOpen) saveItem(currentOpen);
+    return;
+  }
 });
 
 /* ---------- UTILS ---------- */
