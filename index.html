@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8"/>
 <title>SocialBurst — 16-bit Game Boy Explorer</title>
-<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 
 <!-- Brand fonts from your repo -->
 <style>
@@ -152,6 +153,54 @@
     background:#000; color:#fff; font-weight:900; font-size:11px; padding:4px 6px; border-radius:6px; opacity:.75; display:none;
   }
   .tweak-on .tweak-badge{ display:block; }
+  /* --- Mobile layout fixes (place at end of main style block) --- */
+button, .d-btn, .round { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.dpad, .ab, .d-btn, .round { touch-action: none; }
+
+@media (max-width: 640px) {
+  .wrap { padding: 56px 8px 24px; }
+
+  /* Smaller, lower D-pad */
+  .dpad{
+    left: 6%;
+    bottom: calc(4% + env(safe-area-inset-bottom));
+    width: 120px;
+    height: 120px;
+  }
+  .stem.vert{ width: 42px; height: 120px; }
+  .stem.horz{ width: 120px; height: 42px; }
+  .d-btn{ width: 42px; height: 42px; font-size: 14px; }
+  .d-up{ top: 0; left: 39px; }
+  .d-left{ left: 0; top: 39px; }
+  .d-right{ right: 0; top: 39px; }
+
+  /* Smaller, lower A/B cluster */
+  .ab{
+    right: 6%;
+    bottom: calc(6% + env(safe-area-inset-bottom));
+    gap: 12px;
+  }
+  .round{ width: 56px; height: 56px; font-size: 16px; }
+}
+
+/* Tiny phones */
+@media (max-width: 380px) {
+  .dpad{ width: 104px; height: 104px; }
+  .stem.vert{ width: 38px; height: 104px; }
+  .stem.horz{ width: 104px; height: 38px; }
+  .d-btn{ width: 38px; height: 38px; }
+  .d-up{ left: 33px; }
+  .d-left{ top: 33px; }
+  .d-right{ top: 33px; }
+
+  .ab{ gap: 10px; }
+  .round{ width: 50px; height: 50px; }
+}
+
+/* Keep controls above iOS home indicator if supported */
+@supports (padding: max(0px)) {
+  .dpad, .ab { bottom: max(4%, env(safe-area-inset-bottom)); }
+}
 </style>
 </head>
 <body>
@@ -587,6 +636,22 @@ function wireUI(){
   hold(dRight, function(){ keys.right=true; }, function(){ keys.right=false; });
   dUp.addEventListener('click', function(e){ e.preventDefault(); tryEnter(); });
 /* PATCH END */
+// --- Touch equivalents so it works on phones (no 300ms delay) ---
+dUp.addEventListener('touchstart', function(e){
+  e.preventDefault();
+  tryEnter();
+}, { passive: false });
+
+btnA.addEventListener('touchstart', function(e){
+  e.preventDefault();
+  requestJump();
+}, { passive: false });
+
+btnB.addEventListener('touchstart', function(e){
+  e.preventDefault();
+  if (currentOpen) saveItem(currentOpen);
+}, { passive: false });
+
 
   btnA.onclick=function(e){
   e.preventDefault();
