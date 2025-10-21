@@ -878,7 +878,7 @@ var margin = 24;
 
 // Also consider the highest platform
 var minPlatY = PLATFORMS.length
-  ? PLATFORMS.reduce((m, p) => Math.min(m, p.y), GROUND_Y)
+  ? PLATFORMS.reduce(function(m, p){ return Math.min(m, p.y); }, GROUND_Y)
   : GROUND_Y;
 
 // Compute a fresh WORLD_TOP from *either* tallest building or highest platform
@@ -887,10 +887,19 @@ WORLD_BOTTOM = 0;
 }
 
 function buildScene(){
-  buildHouses(); 
+  buildHouses();
   buildParallax();
-  buildPlatforms();   // NEW
-  placeHousesOnPlatforms(); // NEW
+
+  // How many houses must go ABOVE ground? (max 2 on ground)
+  var needAbove = Math.max(0, houses.length - 2);
+
+  // We skip platform[0] and require >= 2 empty platforms between houses.
+  // That needs roughly: 1 (first jump) + [house + 2 gaps] * needAbove
+  // = 1 + 3*needAbove platforms to guarantee slots with spacing.
+  var requiredPlatforms = 1 + 3 * needAbove;
+
+  buildPlatforms(requiredPlatforms);     // ⬅️ pass how many we need
+  placeHousesOnPlatforms();              // enforces: skip index 0, two-platform gap
   recomputeWorldBounds();
 }
 function buildHouses(){
@@ -941,88 +950,94 @@ function buildHouses(){
 }
 
 function buildParallax(){ pines = []; }
-function buildPlatforms(){
+function buildPlatforms(requiredCount){
+  // Fallback if not provided
+  if (requiredCount == null) requiredCount = 16;
+
   PLATFORMS = [];
 
   // --- derive safe reach from your PHYS values ---
-  const vy0 = PHYS.jumpVel;                  // px/s
-  const g   = PHYS.gravity;                  // px/s^2
-  const tUp = vy0 / g;                       // time up
-  const tAir = 2 * tUp;                      // up + down
-  const horizSpeed = PHYS.walkSpeed * PHYS.runMultiplier * 0.95; // conservative
-  const maxHoriz = Math.max(80, Math.min(200, horizSpeed * tAir));
-  const maxRise  = (vy0 * vy0) / (2 * g);    // theoretical max climb
-  const stepY    = Math.round(Math.min(88, maxRise * 0.75));     // safe climb per step
+  const vy0 = PHYS.jumpVel;
+  const g   = PHYS.gravity;
+  const tUp = vy0 / g;
+  const tAir = 2 * tUp;
+  const horizSpeed = PHYS.walkSpeed * PHYS.runMultiplier * 0.95;
+  const maxHoriz = Math.max(80, Math.min(220, horizSpeed * tAir));
+  const maxRise  = (vy0 * vy0) / (2 * g);
+  const stepY    = Math.round(Math.min(96, maxRise * 0.75));
 
-  // platform size + world bounds
   const width  = 104;
   const margin = 32;
 
-  // first platform: comfortably above ground and near the player
+  // start near the player, just above ground
   let x = rint(48, 120);
   let y = GROUND_Y - rint(stepY - 6, stepY + 6);
+  let dir = rpick([+1, -1]);      // initial zig direction
 
- // how many to try to place — scale with number of items so deals can climb higher
-// assume max 2 on ground; rest need platforms, with ≥2 empty platforms between houses
-const platformHouses = Math.max(0, ITEMS.length - 2);
-const count = Math.max(20, platformHouses * 3); // plenty to space them out
-  let dir = rpick([+1, -1]);  // start going left or right
+  // We’ll keep creating platforms until we’ve created enough to host all houses
+  // (given our spacing rule) – no artificial “top” limit.
+  const target = Math.max(requiredCount, 10); // at least a small chain
 
-  for (let i = 0; i < count; i++){
-    PLATFORMS.push({ x, y, w: width, h: 16, row: i });
-
-    // propose a next platform; resample until reachable
-    let tries = 0;
-    while (tries++ < 20){
-      const gapX = rint(Math.max(70, Math.floor(maxHoriz*0.45)),
-                        Math.min(160, Math.floor(maxHoriz*0.75)));
-            const nx = x + dir * gapX;
-      const ny = y - rint(stepY - 10, stepY + 10);
-
-      // keep inside world
-      const nxClamped = Math.max(margin, Math.min(worldW - width - margin, nx));
-
-      // compute reach from *current* to proposed
-      const dx = Math.abs((nxClamped + width/2) - (x + width/2));
-      const dy = Math.max(0, y - ny); // positive = going up
-
-      // --- NEW: block a 3rd platform in the same vertical column ---
-      // Count how many platforms already occupy ~this X (within 24px of center).
-      function countAtX(cx){
-        let count = 0;
-        for (let jj = 0; jj < PLATFORMS.length; jj++){
-          const pj = PLATFORMS[jj];
-          const cj = pj.x + pj.w/2;
-          if (Math.abs(cj - cx) < 24) count++;
-        }
-        // Include the current platform (x,y) we are on in this iteration:
-        const ccur = x + width/2;
-        if (Math.abs(ccur - cx) < 24) count++;
-        return count;
-      }
-      const colOK = countAtX(nxClamped + width/2) < 2; // allow at most 2 per column
-
-      const reachable = (dx <= maxHoriz) && (dy <= stepY + 2) && colOK;
-
-      if (reachable){
-        x = nxClamped;
-        y = ny;
-        break;
-      }
-
-      // flip direction if we bounced into a wall or repeatedly fail
-      if (tries % 6 === 0) dir *= -1;
-    }
-
-    // occasionally flip direction to zig-zag
-    if (r01() < 0.25) dir *= -1;
+  // helper: is "directly stacked" (x-aligned)? treat as stacked if x centers are close
+  function isStacked(idxA, idxB){
+    const a = PLATFORMS[idxA], b = PLATFORMS[idxB];
+    if (!a || !b) return false;
+    const ax = a.x + a.w/2, bx = b.x + b.w/2;
+    return Math.abs(ax - bx) < 24; // ~within quarter-platform ≈ "on top of each other"
   }
 
-  // tighten vertical camera range based on platforms
-  // tighten vertical camera range based on platforms (no artificial ceiling)
-const minY = PLATFORMS.reduce((m, p) => Math.min(m, p.y), GROUND_Y);
-WORLD_TOP = Math.round(minY - 140);  // extra headroom so tall stacks fit
-WORLD_BOTTOM = 0;
+  while (PLATFORMS.length < target){
+    PLATFORMS.push({ x, y, w: width, h: 16, row: PLATFORMS.length });
+
+    // propose next platform until it satisfies reach + “no >2 stacked” rule
+    let tries = 0;
+    while (tries++ < 60){
+      const gapX = rint(Math.max(70, Math.floor(maxHoriz*0.45)),
+                        Math.min(180, Math.floor(maxHoriz*0.8)));
+      let nx = x + dir * gapX;
+
+      // world bounds
+      nx = Math.max(margin, Math.min(worldW - width - margin, nx));
+
+      // always go generally upward, but allow small variance
+      const ny = y - rint(stepY - 10, stepY + 10);
+
+      // check reachable
+      const dx = Math.abs((nx + width/2) - (x + width/2));
+      const dyUp = Math.max(0, y - ny); // positive if going up
+      const reachable = (dx <= maxHoriz) && (dyUp <= stepY + 2);
+
+      if (!reachable){ if (tries % 6 === 0) dir *= -1; continue; }
+
+      // --- "no more than TWO stacked directly above each other" ---
+      // If last two share almost the same x, the next must NOT share it too.
+      const n = PLATFORMS.length;
+      const wouldStack3 = (n >= 2)
+        ? (isStacked(n-1, n-2) && Math.abs((PLATFORMS[n-1].x + width/2) - (nx + width/2)) < 24)
+        : false;
+
+      if (wouldStack3){
+        // push horizontally the other way or flip direction
+        dir *= -1;
+        continue;
+      }
+
+      // accept
+      x = nx; y = ny;
+      // occasionally flip to create a climbing zig-zag
+      if (r01() < 0.25) dir *= -1;
+      break;
+    }
+
+    // If we got stuck, nudge horizontally and keep going up anyway
+    if (tries > 60){
+      x = Math.max(margin, Math.min(worldW - width - margin, x + (dir>0? +60 : -60)));
+      y = y - stepY;
+      dir *= -1;
+    }
+  }
+
+  // Camera vertical space should allow reaching the highest platform; WORLD_TOP is recomputed later.
 }
 
 function placeHousesOnPlatforms(){
