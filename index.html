@@ -153,19 +153,37 @@
     background:#000; color:#fff; font-weight:900; font-size:11px; padding:4px 6px; border-radius:6px; opacity:.75; display:none;
   }
   .tweak-on .tweak-badge{ display:block; }
-  /* --- Mobile layout fixes (place at end of main style block) --- */
-button, .d-btn, .round { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
-.dpad, .ab, .d-btn, .round { touch-action: none; }
+/* ===== MOBILE / TOUCH FIXES ===== */
+button, .d-btn, .round { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
 
+/* Make tabs + logo sit above the bezel */
+.logo-badge{ z-index: 6; }
+.toggle{ z-index: 6; }
+
+/* Keep controllers above the screen but below the tabs */
+.dpad, .ab { z-index: 5; }
+
+/* Don’t let the game area eat touches for gestures */
+.screen-inner, .screen-bezel { touch-action: none; }
+
+/* Base positions refined */
+.dpad{
+  left: 11%;
+  bottom: 10%;
+}
+.ab{
+  right: 11%;
+  bottom: 12%;
+}
+
+/* Mobile: smaller and lower controls so they don’t block play */
 @media (max-width: 640px) {
-  .wrap { padding: 56px 8px 24px; }
+  .wrap{ padding: 56px 8px calc(14px + env(safe-area-inset-bottom)); }
 
-  /* Smaller, lower D-pad */
   .dpad{
     left: 6%;
-    bottom: calc(4% + env(safe-area-inset-bottom));
-    width: 120px;
-    height: 120px;
+    bottom: calc(3% + env(safe-area-inset-bottom));
+    width: 120px; height: 120px;
   }
   .stem.vert{ width: 42px; height: 120px; }
   .stem.horz{ width: 120px; height: 42px; }
@@ -174,13 +192,31 @@ button, .d-btn, .round { touch-action: manipulation; -webkit-tap-highlight-color
   .d-left{ left: 0; top: 39px; }
   .d-right{ right: 0; top: 39px; }
 
-  /* Smaller, lower A/B cluster */
   .ab{
     right: 6%;
-    bottom: calc(6% + env(safe-area-inset-bottom));
+    bottom: calc(5% + env(safe-area-inset-bottom));
     gap: 12px;
   }
   .round{ width: 56px; height: 56px; font-size: 16px; }
+}
+
+/* Very small phones */
+@media (max-width: 380px) {
+  .dpad{ width: 104px; height: 104px; }
+  .stem.vert{ width: 38px; height: 104px; }
+  .stem.horz{ width: 104px; height: 38px; }
+  .d-btn{ width: 38px; height: 38px; }
+  .d-up{ left: 33px; }
+  .d-left{ top: 33px; }
+  .d-right{ top: 33px; }
+
+  .ab{ gap: 10px; }
+  .round{ width: 50px; height: 50px; }
+}
+
+/* Respect iPhone safe area when available */
+@supports (padding: max(0px)) {
+  .dpad, .ab { bottom: max(3%, env(safe-area-inset-bottom)); }
 }
 
 /* Tiny phones */
@@ -621,20 +657,39 @@ function wireUI(){
   tabEvents.onclick=function(){ setCategory('events'); };
   tabDeals.onclick=function(){ setCategory('deals'); };
 
- /* PATCH START: dpad continuous press */
-  function hold(el, on, off){
-    var down=false, id=null;
-    var start=function(e){ e.preventDefault(); down=true; on(); };
-    var stop=function(e){ e && e.preventDefault(); if(down){ down=false; off(); } };
-    el.addEventListener('mousedown', start);
-    el.addEventListener('touchstart', start, {passive:false});
-    window.addEventListener('mouseup', stop);
-    window.addEventListener('touchend', stop);
-    window.addEventListener('touchcancel', stop);
-  }
-  hold(dLeft,  function(){ keys.left=true; },  function(){ keys.left=false; });
-  hold(dRight, function(){ keys.right=true; }, function(){ keys.right=false; });
-  dUp.addEventListener('click', function(e){ e.preventDefault(); tryEnter(); });
+/* PATCH START: pointer-based multi-touch */
+function bindHold(el, onDown, onUp){
+  el.addEventListener('pointerdown', function(e){
+    e.preventDefault();
+    el.setPointerCapture(e.pointerId);
+    onDown(e);
+  });
+  el.addEventListener('pointerup', function(e){
+    e.preventDefault();
+    onUp(e);
+  });
+  el.addEventListener('pointercancel', onUp);
+  el.addEventListener('pointerleave', onUp);
+}
+
+// D-pad left/right hold (can be pressed with A/B at the same time)
+bindHold(dLeft,  function(){ keys.left  = true;  }, function(){ keys.left  = false; });
+bindHold(dRight, function(){ keys.right = true;  }, function(){ keys.right = false; });
+
+// “ENTER” (Up) just triggers once on tap
+dUp.addEventListener('pointerdown', function(e){ e.preventDefault(); tryEnter(); });
+
+// A = jump (tap), allow simultaneous with arrows
+bindHold(btnA, function(e){
+  e.preventDefault();
+  requestJump();
+}, function(){ /* no hold needed for jump */ });
+
+// B = save (tap)
+bindHold(btnB, function(e){
+  e.preventDefault();
+  if (currentOpen) saveItem(currentOpen);
+}, function(){});
 /* PATCH END */
 // --- Touch equivalents so it works on phones (no 300ms delay) ---
 dUp.addEventListener('touchstart', function(e){
@@ -1960,6 +2015,8 @@ function closePlaque(){
 }
 
 plaqueClose.addEventListener('click', closePlaque);
+plaqueClose.addEventListener('pointerdown', function(e){ e.preventDefault(); closePlaque(); });
+plaqueClose.addEventListener('touchstart', function(e){ e.preventDefault(); closePlaque(); }, { passive:false });
 plaque.addEventListener('click', function(e){
   if (e.target === plaque) closePlaque(); // click outside to close
 });
