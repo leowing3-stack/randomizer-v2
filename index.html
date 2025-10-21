@@ -237,6 +237,58 @@ button, .d-btn, .round { -webkit-tap-highlight-color: transparent; touch-action:
 @supports (padding: max(0px)) {
   .dpad, .ab { bottom: max(4%, env(safe-area-inset-bottom)); }
 }
+/* ===== MOBILE: move controls *below* the screen ===== */
+@media (max-width: 768px) {
+  /* Remove absolute positioning from .dpad / .ab when inside mobile layout */
+  .controls-zone{
+    position: relative;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 24px 10%;
+    margin-top: 8px;
+    width: 100%;
+  }
+
+  .dpad,
+  .ab {
+    position: static !important;
+    transform: none !important;
+  }
+
+  .dpad{
+    display: grid;
+    place-items: center;
+    width: 120px;
+    height: 120px;
+  }
+
+  .ab{
+    display: flex;
+    gap: 16px;
+  }
+
+  .round{
+    width: 64px;
+    height: 64px;
+  }
+
+  /* Make sure the Game Boy frame leaves space for the controls below */
+  .gb{
+    padding-bottom: 200px; /* creates room below screen for controls */
+  }
+
+  /* Optional: tighten for very small phones */
+  @media (max-width: 420px) {
+    .controls-zone{
+      padding: 16px 8%;
+      margin-top: 4px;
+    }
+    .dpad{ width: 100px; height: 100px; }
+    .round{ width: 50px; height: 50px; }
+    .gb{ padding-bottom: 160px; }
+  }
+}
 </style>
 </head>
 <body>
@@ -273,20 +325,20 @@ button, .d-btn, .round { -webkit-tap-highlight-color: transparent; touch-action:
       </div>
     </div>
 
-    <div class="dpad" aria-label="D-pad">
-      <div class="stem vert"></div>
-      <div class="stem horz"></div>
-      <button class="d-btn d-up" id="d-up" aria-label="Up"><span>↑</span></button>
-      <button class="d-btn d-left" id="d-left" aria-label="Left"><span>←</span></button>
-      <button class="d-btn d-right" id="d-right" aria-label="Right"><span>→</span></button>
-    </div>
+       <div class="controls-zone">
+      <div class="dpad" aria-label="D-pad">
+        <div class="stem vert"></div>
+        <div class="stem horz"></div>
+        <button class="d-btn d-up" id="d-up" aria-label="Up"><span>↑</span></button>
+        <button class="d-btn d-left" id="d-left" aria-label="Left"><span>←</span></button>
+        <button class="d-btn d-right" id="d-right" aria-label="Right"><span>→</span></button>
+      </div>
 
-    <div class="ab">
-      <button class="round" id="btn-details" title="Open details">A</button>
-      <button class="round" id="btn-save" title="Save">B</button>
+      <div class="ab">
+        <button class="round" id="btn-details" title="Open details">A</button>
+        <button class="round" id="btn-save" title="Save">B</button>
+      </div>
     </div>
-  </div>
-</div>
 
 <!-- Details Modal -->
 <div id="modal-backdrop" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-title" style="display:none; align-items:center; justify-content:center; padding:16px; z-index:100; position:fixed; inset:0; background:rgba(0,0,0,.45);">
