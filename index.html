@@ -733,10 +733,11 @@ imgAbbeyBG.onload = function(){ abbeyBGReady = true; };
 imgAbbeyBG.src = './SocialBurstRandomizer/sprites/backgrounds/abbey_bg.png';
 
 var ABBEY_BG = {
-  scale: 0.95,   // makes it span the screen width cleanly
-  parallax: 0.18, // subtle parallax (smaller = more distant)
-  offsetX: 0,     // we’ll center in screen-space (no world push)
-  offsetY: -6
+  scale: 0.95,
+  parallax: 0.18,
+  offsetX: 0,
+  offsetY: -6,
+  opacity: 0.55   // ← tweak 0.45–0.65 to taste
 };
 
 /* ================= CSV & DATA ================= */
@@ -1401,11 +1402,12 @@ function drawAbbeyBG(){
   // (allows full parallax, then "locks" at the extreme).
   x = Math.min(0, Math.max(canvas.width - w, x));
 
+  // ...
   const baseY = GROUND_Y + (ABBEY_BG.offsetY || 0);
   const y = Math.round((baseY - h) - cameraY);
 
-    ctx.save();
-  ctx.globalAlpha = 0.65; // ↓ make the abbey less loud (0.0–1.0). Try 0.55–0.7 to taste.
+  ctx.save();
+  ctx.globalAlpha = (ABBEY_BG.opacity == null ? 0.6 : ABBEY_BG.opacity);
   ctx.drawImage(imgAbbeyBG, x, y, w, h);
   ctx.restore();
 }
